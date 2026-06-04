@@ -87,7 +87,7 @@ class _GameScreenState extends State<GameScreen>
                           onPanUpdate: (d) => _ctrl.onTouchMove(_toGrid(d.localPosition)),
                           onPanEnd: (_) => _ctrl.onTouchEnd(),
                           child: CustomPaint(
-                            painter: FieldPainter(_ctrl, _img),
+                            painter: FieldPainter(controller: _ctrl, gridImage: _img),
                           ),
                         ),
                       ),
