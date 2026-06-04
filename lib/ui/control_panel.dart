@@ -4,9 +4,11 @@ import '../rules/field_rule.dart';
 import '../rules/wave_rule.dart';
 import '../rules/gravity_rule.dart';
 import '../rules/heat_rule.dart';
+import '../rules/gray_scott_rule.dart';
+import '../rules/bz_rule.dart';
 
 // 利用可能なルール一覧
-const _ruleOptions = ['wave', 'gravity', 'heat'];
+const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz'];
 
 class ControlPanel extends StatefulWidget {
   final GameController controller;
@@ -31,6 +33,8 @@ class _ControlPanelState extends State<ControlPanel> {
       case 'wave':    return WaveRule();
       case 'gravity': return GravityRule();
       case 'heat':    return HeatRule();
+      case 'gray-scott': return GrayScottRule();
+      case 'bz': return BZRule();
       default:        return WaveRule();
     }
   }
@@ -61,6 +65,9 @@ class _ControlPanelState extends State<ControlPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final rule = widget.controller.rule;
+    final params = rule.params;
+
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF0A0A12),
@@ -70,7 +77,7 @@ class _ControlPanelState extends State<ControlPanel> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Row 1: スライダー ──
+          // ── Row 1: 頂点数スライダー ──
           Row(
             children: [
               _label('N'),
@@ -144,7 +151,13 @@ class _ControlPanelState extends State<ControlPanel> {
             ],
           ),
 
-          // ── Row 3: 補足情報（Gravity用） ──
+          // ── 動的パラメータスライダー ──
+          if (params.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...params.map((p) => _buildParamSlider(p)),
+          ],
+
+          // Gravity用の同期情報表示
           if (_selected == 'gravity') ...[
             const SizedBox(height: 4),
             Row(
@@ -164,6 +177,41 @@ class _ControlPanelState extends State<ControlPanel> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParamSlider(RuleParam p) {
+    // 現在の値を取得（簡易的にdefaultValueを使用するが、本来はRuleから取得すべき）
+    // 今回はRuleに現在の値を保持させる仕組みがないため、簡易的に実装
+    // ※ 実際には Rule 側に値を保持し、それを取得するゲッターが必要
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(width: 60, child: _label(p.label.toUpperCase())),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: const Color(0xFF80C8FF),
+                inactiveTrackColor: const Color(0xFF1A2A3A),
+                thumbColor: const Color(0xFF80C8FF),
+                trackHeight: 1,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+              ),
+              child: Slider(
+                value: p.getCurrentValue?.call() ?? p.defaultValue,
+                min: p.min,
+                max: p.max,
+                divisions: p.divisions,
+                onChanged: (v) {
+                  widget.controller.setParam(p.key, v);
+                  widget.onRebuild();
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );

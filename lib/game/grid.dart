@@ -6,6 +6,10 @@ class Grid {
   late Float32List uPrev;
   late Float32List mask;
 
+  // 2成分系エイリアス
+  Float32List get a => u;
+  Float32List get b => uPrev;
+
   Grid(this.w, this.h) {
     u     = Float32List(w * h);
     uPrev = Float32List(w * h);

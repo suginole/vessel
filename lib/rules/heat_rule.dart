@@ -32,7 +32,7 @@ class HeatRule extends FieldRule {
 
   @override
   List<RuleParam> get params => [
-    const RuleParam(key: 'alpha', label: 'Diffusion', min: 0.01, max: 0.5, defaultValue: 0.2),
+    RuleParam(key: 'alpha', label: 'Diffusion', min: 0.01, max: 0.5, defaultValue: 0.2, getCurrentValue: () => alpha),
   ];
 
   double alpha = 0.2;

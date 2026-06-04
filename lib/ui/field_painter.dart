@@ -95,13 +95,38 @@ class FieldPainter extends CustomPainter {
     if (rule.placing != null && rule.dragStart != null) {
       final p = rule.placing!;
       final c = Offset(p.pos.dx * sx, p.pos.dy * sy);
+      
+      // 速度矢印の描画（見やすいようにスケーリング）
+      const arrowScale = 50.0; 
       final tip = Offset(
-        (p.pos.dx + p.vel.dx) * sx,
-        (p.pos.dy + p.vel.dy) * sy,
+        (p.pos.dx + p.vel.dx * arrowScale) * sx,
+        (p.pos.dy + p.vel.dy * arrowScale) * sy,
       );
+      
       canvas.drawCircle(c, 8, Paint()..color = Colors.white.withOpacity(0.6));
-      canvas.drawLine(c, tip, Paint()..color = Colors.white..strokeWidth = 2);
+      canvas.drawLine(
+        c, 
+        tip, 
+        Paint()
+          ..color = Colors.white.withOpacity(0.8)
+          ..strokeWidth = 2.0
+      );
+      
+      // 矢印の先端
       canvas.drawCircle(tip, 3, Paint()..color = Colors.white);
+      
+      // 簡易的な軌道予測（直線）
+      canvas.drawLine(
+        tip,
+        Offset(
+          (p.pos.dx + p.vel.dx * arrowScale * 2) * sx,
+          (p.pos.dy + p.vel.dy * arrowScale * 2) * sy,
+        ),
+        Paint()
+          ..color = Colors.white.withOpacity(0.2)
+          ..strokeWidth = 1.0
+          ..style = PaintingStyle.stroke,
+      );
     }
   }
 

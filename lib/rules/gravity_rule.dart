@@ -42,8 +42,8 @@ class GravityRule extends FieldRule {
 
   @override
   List<RuleParam> get params => [
-    const RuleParam(key: 'G', label: 'Gravity', min: 0.00002, max: 0.01, defaultValue: 0.001),
-    const RuleParam(key: 'mass', label: 'Mass', min: 0.1, max: 5.0, defaultValue: 1.0),
+    RuleParam(key: 'G', label: 'Gravity', min: 0.00002, max: 0.01, defaultValue: 0.001, getCurrentValue: () => g),
+    RuleParam(key: 'mass', label: 'Mass', min: 0.1, max: 5.0, defaultValue: 1.0, getCurrentValue: () => currentMass),
   ];
 
   double _g = 1.0;
