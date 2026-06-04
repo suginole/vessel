@@ -212,7 +212,8 @@ class GravityRule extends FieldRule {
           final dx = b.pos.dx - x;
           final dy = b.pos.dy - y;
           const double epsSq = 25.0;
-          phi += (_g * b.mass * 10.0) / sqrt(dx * dx + dy * dy + epsSq);
+          // Gが極小(0.00002~0.01)なので、可視化のために1000倍以上にブースト
+          phi += (_g * b.mass * 50000.0) / sqrt(dx * dx + dy * dy + epsSq);
         }
         u[i] = phi; 
       }
