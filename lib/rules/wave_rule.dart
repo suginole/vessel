@@ -28,6 +28,9 @@ class WaveRule extends FieldRule {
   }
 
   @override
+  void clean(Grid grid) => init(grid);
+
+  @override
   void step(Grid grid, double dt) {
     final w = grid.w;
     final h = grid.h;

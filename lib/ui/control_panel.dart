@@ -3,9 +3,10 @@ import '../game/game_controller.dart';
 import '../rules/field_rule.dart';
 import '../rules/wave_rule.dart';
 import '../rules/gravity_rule.dart';
+import '../rules/heat_rule.dart';
 
 // 利用可能なルール一覧
-const _ruleOptions = ['wave', 'gravity']; // 後で拡張
+const _ruleOptions = ['wave', 'gravity', 'heat'];
 
 class ControlPanel extends StatefulWidget {
   final GameController controller;
@@ -29,6 +30,7 @@ class _ControlPanelState extends State<ControlPanel> {
     switch (_selected) {
       case 'wave':    return WaveRule();
       case 'gravity': return GravityRule();
+      case 'heat':    return HeatRule();
       default:        return WaveRule();
     }
   }
