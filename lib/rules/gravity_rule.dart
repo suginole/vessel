@@ -75,8 +75,12 @@ class GravityRule extends FieldRule {
 
   @override
   void step(Grid grid, double dt) {
+    // ★ 時間の刻み幅（dt）の調整：ここを小さくするとゆっくり進みます（例: dt * 0.1）
+    const double timeScale = 0.1;
+    final double scaledDt = dt * timeScale;
+
     const int subSteps = 8;
-    final double dtSub = dt / subSteps;
+    final double dtSub = scaledDt / subSteps;
 
     for (int s = 0; s < subSteps; s++) {
       _stepYoshida(dtSub, grid.mask, grid.w, grid.h);
@@ -156,6 +160,7 @@ class GravityRule extends FieldRule {
         if (toRemove.contains(j)) continue;
         
         final dist = (bodies[i].pos - bodies[j].pos).distance;
+        // ★ 合体半径の調整：この mergeDist を小さくすると、より近づかないと合体しなくなります
         final mergeDist = (bodies[i].mass + bodies[j].mass) * 2.0 + 2.0;
         
         if (dist < mergeDist) {
