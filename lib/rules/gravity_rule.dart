@@ -174,8 +174,9 @@ class GravityRule extends FieldRule {
   @override
   void onTouchMove(Grid grid, Offset p) {
     if (placing != null && dragStart != null) {
-      // 初速度を 0.1 倍にして調整（スピーディすぎるのを防ぐ）
-      placing!.vel = (p - dragStart!) * 0.1;
+      // ★ 初速度の倍率：ここを小さくすると遅くなります（例: 0.02）
+      const double velocityScale = 0.02;
+      placing!.vel = (p - dragStart!) * velocityScale;
     }
   }
 
