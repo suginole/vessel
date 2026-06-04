@@ -106,6 +106,7 @@ class GravityRule extends FieldRule {
   }
 
   void _integrate(double dtC, double dtD, List<double> mask, int w, int h) {
+    // 1. 位置更新と境界反射
     for (var b in bodies) {
       b.pos += b.vel * dtC;
       
@@ -115,7 +116,6 @@ class GravityRule extends FieldRule {
         if (b.pos.dx < 0 || b.pos.dx >= w) b.vel = Offset(-b.vel.dx, b.vel.dy);
         if (b.pos.dy < 0 || b.pos.dy >= h) b.vel = Offset(b.vel.dx, -b.vel.dy);
         
-        // 境界外に出た場合の押し戻し
         b.pos = Offset(
           b.pos.dx.clamp(0.1, w - 1.1),
           b.pos.dy.clamp(0.1, h - 1.1),
@@ -123,19 +123,69 @@ class GravityRule extends FieldRule {
       }
     }
 
+    // 2. 合体判定（距離が極小の場合）
+    _handleMergers();
+
     if (dtD == 0) return;
 
+    // 3. 速度更新（加速度）
     for (int i = 0; i < bodies.length; i++) {
       Offset acc = Offset.zero;
       for (int j = 0; j < bodies.length; j++) {
         if (i == j) continue;
         final r = bodies[j].pos - bodies[i].pos;
         final distSq = r.dx * r.dx + r.dy * r.dy;
-        const double epsSq = 25.0; // softening
+        const double epsSq = 25.0; 
         final invDistCube = 1.0 / pow(distSq + epsSq, 1.5);
-        acc += r * (g * bodies[j].mass * 100.0 * invDistCube); // Gのスケール調整
+        acc += r * (g * bodies[j].mass * 100.0 * invDistCube);
       }
       bodies[i].vel += acc * dtD;
+    }
+  }
+
+  void _handleMergers() {
+    if (bodies.length < 2) return;
+    
+    List<int> toRemove = [];
+    for (int i = 0; i < bodies.length; i++) {
+      if (toRemove.contains(i)) continue;
+      for (int j = i + 1; j < bodies.length; j++) {
+        if (toRemove.contains(j)) continue;
+        
+        final dist = (bodies[i].pos - bodies[j].pos).distance;
+        // 合体判定距離：質量に応じた半径の合計など
+        final mergeDist = (bodies[i].mass + bodies[j].mass) * 2.0 + 2.0;
+        
+        if (dist < mergeDist) {
+          // 運動量保存: m1*v1 + m2*v2 = (m1+m2)*v_new
+          final m1 = bodies[i].mass;
+          final m2 = bodies[j].mass;
+          final v1 = bodies[i].vel;
+          final v2 = bodies[j].vel;
+          
+          final newMass = m1 + m2;
+          final newVel = Offset(
+            (m1 * v1.dx + m2 * v2.dx) / newMass,
+            (m1 * v1.dy + m2 * v2.dy) / newMass,
+          );
+          // 位置は質点重心
+          final newPos = Offset(
+            (m1 * bodies[i].pos.dx + m2 * bodies[j].pos.dx) / newMass,
+            (m1 * bodies[i].pos.dy + m2 * bodies[j].pos.dy) / newMass,
+          );
+          
+          bodies[i].mass = newMass;
+          bodies[i].vel = newVel;
+          bodies[i].pos = newPos;
+          toRemove.add(j);
+        }
+      }
+    }
+    
+    // 逆順に削除
+    toRemove.sort((a, b) => b.compareTo(a));
+    for (var idx in toRemove) {
+      bodies.removeAt(idx);
     }
   }
 

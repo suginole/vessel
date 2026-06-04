@@ -76,7 +76,8 @@ class FieldPainter extends CustomPainter {
     for (int i = 0; i < rule.bodies.length; i++) {
       final b = rule.bodies[i];
       final c = Offset(b.pos.dx * sx, b.pos.dy * sy);
-      final r = (b.mass * 6).clamp(4.0, 16.0);
+      // 質量に応じてサイズを大きくする（上限を緩和）
+      final r = (b.mass * 4.0 + 4.0).clamp(4.0, 40.0);
       canvas.drawCircle(c, r + 2, Paint()..color = Colors.white.withOpacity(0.2));
       canvas.drawCircle(
         c,
