@@ -15,15 +15,38 @@ class GravityRule extends FieldRule {
   String get name => 'gravity';
 
   @override
-  RenderConfig get renderConfig => RenderConfig.gravity();
+  RenderConfig get renderConfig => RenderConfig(pixel: (u, m, ch) {
+    // 重力モードのフィールドカラーは黒ベース
+    // 等高線の輝線のみを描画
+    final v = u.abs(); // ポテンシャルの絶対値を使用
+    const levels = 15;
+    final val = v * levels;
+    final frac = val - val.floor();
+    
+    // 等高線の幅を細くして「線」として表現
+    final isContour = frac < 0.15 && v > 0.01;
+    
+    if (isContour) {
+      // 輝線：緑〜青系の色
+      final rgb = [
+        (0.2 * 255 * m).toInt(), // R
+        (0.8 * 255 * m).toInt(), // G
+        (1.0 * 255 * m).toInt(), // B
+      ];
+      return rgb[ch].clamp(0, 255);
+    } else {
+      // 背景は黒
+      return 0;
+    }
+  });
 
   @override
   List<RuleParam> get params => [
-    const RuleParam(key: 'G', label: 'Gravity', min: 100, max: 2000, defaultValue: 1000),
+    const RuleParam(key: 'G', label: 'Gravity', min: 0.1, max: 10.0, defaultValue: 1.0),
     const RuleParam(key: 'mass', label: 'Mass', min: 0.1, max: 5.0, defaultValue: 1.0),
   ];
 
-  double g = 1000.0;
+  double g = 1.0;
   double currentMass = 1.0;
 
   List<GravityBody> bodies = [];
@@ -56,7 +79,6 @@ class GravityRule extends FieldRule {
       _stepYoshida(dtSub, grid.mask, grid.w, grid.h);
     }
 
-    // 軌跡の更新（間引き）
     if (bodies.isNotEmpty) {
       for (var b in bodies) {
         trails.add(b.pos);
@@ -66,7 +88,6 @@ class GravityRule extends FieldRule {
       }
     }
 
-    // ポテンシャル場の計算（グリッド）
     _updatePotential(grid);
   }
 
@@ -85,34 +106,34 @@ class GravityRule extends FieldRule {
   }
 
   void _integrate(double dtC, double dtD, List<double> mask, int w, int h) {
-    // 位置更新
     for (var b in bodies) {
       b.pos += b.vel * dtC;
       
-      // 境界反射
       final ix = b.pos.dx.toInt();
       final iy = b.pos.dy.toInt();
       if (ix < 0 || ix >= w || iy < 0 || iy >= h || mask[iy * w + ix] == 0) {
-        // 簡易反射：中心方向へ戻す
-        final center = Offset(w / 2, h / 2);
-        final toCenter = (center - b.pos);
-        b.vel = Offset(-b.vel.dx, -b.vel.dy); // 反転
-        b.pos += b.vel * dtC; // 戻す
+        if (b.pos.dx < 0 || b.pos.dx >= w) b.vel = Offset(-b.vel.dx, b.vel.dy);
+        if (b.pos.dy < 0 || b.pos.dy >= h) b.vel = Offset(b.vel.dx, -b.vel.dy);
+        
+        // 境界外に出た場合の押し戻し
+        b.pos = Offset(
+          b.pos.dx.clamp(0.1, w - 1.1),
+          b.pos.dy.clamp(0.1, h - 1.1),
+        );
       }
     }
 
     if (dtD == 0) return;
 
-    // 速度更新（加速度）
     for (int i = 0; i < bodies.length; i++) {
       Offset acc = Offset.zero;
       for (int j = 0; j < bodies.length; j++) {
         if (i == j) continue;
         final r = bodies[j].pos - bodies[i].pos;
         final distSq = r.dx * r.dx + r.dy * r.dy;
-        const double epsSq = 9.0; // epsilon = 3.0
+        const double epsSq = 25.0; // softening
         final invDistCube = 1.0 / pow(distSq + epsSq, 1.5);
-        acc += r * (g * bodies[j].mass * invDistCube);
+        acc += r * (g * bodies[j].mass * 100.0 * invDistCube); // Gのスケール調整
       }
       bodies[i].vel += acc * dtD;
     }
@@ -136,11 +157,10 @@ class GravityRule extends FieldRule {
         for (var b in bodies) {
           final dx = b.pos.dx - x;
           final dy = b.pos.dy - y;
-          const double epsSq = 9.0;
-          phi -= (g * b.mass) / sqrt(dx * dx + dy * dy + epsSq);
+          const double epsSq = 25.0;
+          phi += (g * b.mass * 10.0) / sqrt(dx * dx + dy * dy + epsSq);
         }
-        // スケーリング（RenderConfigに合わせて調整）
-        u[i] = phi / 5000.0; 
+        u[i] = phi; 
       }
     }
   }
@@ -154,8 +174,8 @@ class GravityRule extends FieldRule {
   @override
   void onTouchMove(Grid grid, Offset p) {
     if (placing != null && dragStart != null) {
-      // 初速 = ドラッグ開始点からのベクトル
-      placing!.vel = p - dragStart!;
+      // 初速度を 0.1 倍にして調整（スピーディすぎるのを防ぐ）
+      placing!.vel = (p - dragStart!) * 0.1;
     }
   }
 
