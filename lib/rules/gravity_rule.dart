@@ -42,7 +42,7 @@ class GravityRule extends FieldRule {
 
   @override
   List<RuleParam> get params => [
-    const RuleParam(key: 'G', label: 'Gravity', min: 0.05, max: 5.0, defaultValue: 1.0),
+    const RuleParam(key: 'G', label: 'Gravity', min: 0.00002, max: 0.01, defaultValue: 0.001),
     const RuleParam(key: 'mass', label: 'Mass', min: 0.1, max: 5.0, defaultValue: 1.0),
   ];
 
@@ -223,7 +223,8 @@ class GravityRule extends FieldRule {
   @override
   void onTouchMove(Grid grid, Offset p) {
     if (placing != null && dragStart != null) {
-      const double velocityScale = 0.02;
+      // さらに5分の1に抑制 (0.02 / 5 = 0.004)
+      const double velocityScale = 0.004;
       placing!.vel = (p - dragStart!) * velocityScale;
     }
   }

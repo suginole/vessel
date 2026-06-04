@@ -39,9 +39,9 @@ class _ControlPanelState extends State<ControlPanel> {
     final rule = _buildRule();
     widget.controller.restart(_n, rule);
     
-    // N (3~16) を G (0.05~5.0) に線形マッピング
+    // N (3~16) を G (0.00002~0.01) に線形マッピング
     if (rule is GravityRule) {
-      final newG = 0.05 + (5.0 - 0.05) * (_n - 3) / (16 - 3);
+      final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
       widget.controller.setParam('G', newG);
     }
     
@@ -95,7 +95,7 @@ class _ControlPanelState extends State<ControlPanel> {
                       setState(() {
                         _n = v.toInt();
                         if (_selected == 'gravity') {
-                          final newG = 0.05 + (5.0 - 0.05) * (_n - 3) / (16 - 3);
+                          final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
                           widget.controller.setParam('G', newG);
                         }
                       });
@@ -154,7 +154,7 @@ class _ControlPanelState extends State<ControlPanel> {
                 Text(
                   (widget.controller.rule is GravityRule 
                       ? (widget.controller.rule as GravityRule).g 
-                      : 1.0).toStringAsFixed(2),
+                      : 1.0).toStringAsFixed(5),
                   style: const TextStyle(
                     color: Color(0xFF00FFB2), 
                     fontSize: 10,
