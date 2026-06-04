@@ -42,11 +42,12 @@ class GravityRule extends FieldRule {
 
   @override
   List<RuleParam> get params => [
-    const RuleParam(key: 'G', label: 'Gravity', min: 0.1, max: 10.0, defaultValue: 1.0),
+    const RuleParam(key: 'G', label: 'Gravity', min: 0.05, max: 5.0, defaultValue: 1.0),
     const RuleParam(key: 'mass', label: 'Mass', min: 0.1, max: 5.0, defaultValue: 1.0),
   ];
 
-  double g = 1.0;
+  double _g = 1.0;
+  double get g => _g;
   double currentMass = 1.0;
 
   List<GravityBody> bodies = [];
@@ -66,7 +67,9 @@ class GravityRule extends FieldRule {
 
   @override
   void setParam(String key, double value) {
-    if (key == 'G') g = value;
+    if (key == 'G') {
+      _g = value;
+    }
     if (key == 'mass') currentMass = value;
   }
 
@@ -137,7 +140,7 @@ class GravityRule extends FieldRule {
         final distSq = r.dx * r.dx + r.dy * r.dy;
         const double epsSq = 25.0; 
         final invDistCube = 1.0 / pow(distSq + epsSq, 1.5);
-        acc += r * (g * bodies[j].mass * 100.0 * invDistCube);
+        acc += r * (_g * bodies[j].mass * 100.0 * invDistCube);
       }
       bodies[i].vel += acc * dtD;
     }
@@ -153,11 +156,9 @@ class GravityRule extends FieldRule {
         if (toRemove.contains(j)) continue;
         
         final dist = (bodies[i].pos - bodies[j].pos).distance;
-        // 合体判定距離：質量に応じた半径の合計など
         final mergeDist = (bodies[i].mass + bodies[j].mass) * 2.0 + 2.0;
         
         if (dist < mergeDist) {
-          // 運動量保存: m1*v1 + m2*v2 = (m1+m2)*v_new
           final m1 = bodies[i].mass;
           final m2 = bodies[j].mass;
           final v1 = bodies[i].vel;
@@ -168,7 +169,6 @@ class GravityRule extends FieldRule {
             (m1 * v1.dx + m2 * v2.dx) / newMass,
             (m1 * v1.dy + m2 * v2.dy) / newMass,
           );
-          // 位置は質点重心
           final newPos = Offset(
             (m1 * bodies[i].pos.dx + m2 * bodies[j].pos.dx) / newMass,
             (m1 * bodies[i].pos.dy + m2 * bodies[j].pos.dy) / newMass,
@@ -182,7 +182,6 @@ class GravityRule extends FieldRule {
       }
     }
     
-    // 逆順に削除
     toRemove.sort((a, b) => b.compareTo(a));
     for (var idx in toRemove) {
       bodies.removeAt(idx);
@@ -208,7 +207,7 @@ class GravityRule extends FieldRule {
           final dx = b.pos.dx - x;
           final dy = b.pos.dy - y;
           const double epsSq = 25.0;
-          phi += (g * b.mass * 10.0) / sqrt(dx * dx + dy * dy + epsSq);
+          phi += (_g * b.mass * 10.0) / sqrt(dx * dx + dy * dy + epsSq);
         }
         u[i] = phi; 
       }
@@ -224,7 +223,6 @@ class GravityRule extends FieldRule {
   @override
   void onTouchMove(Grid grid, Offset p) {
     if (placing != null && dragStart != null) {
-      // ★ 初速度の倍率：ここを小さくすると遅くなります（例: 0.02）
       const double velocityScale = 0.02;
       placing!.vel = (p - dragStart!) * velocityScale;
     }

@@ -36,7 +36,15 @@ class _ControlPanelState extends State<ControlPanel> {
   }
 
   void _restart() {
-    widget.controller.restart(_n, _buildRule());
+    final rule = _buildRule();
+    widget.controller.restart(_n, rule);
+    
+    // N (3~16) を G (0.05~5.0) に線形マッピング
+    if (rule is GravityRule) {
+      final newG = 0.05 + (5.0 - 0.05) * (_n - 3) / (16 - 3);
+      widget.controller.setParam('G', newG);
+    }
+    
     widget.onRebuild();
   }
 
@@ -83,7 +91,15 @@ class _ControlPanelState extends State<ControlPanel> {
                     value: _n.toDouble(),
                     min: 3, max: 16,
                     divisions: 13,
-                    onChanged: (v) => setState(() => _n = v.toInt()),
+                    onChanged: (v) {
+                      setState(() {
+                        _n = v.toInt();
+                        if (_selected == 'gravity') {
+                          final newG = 0.05 + (5.0 - 0.05) * (_n - 3) / (16 - 3);
+                          widget.controller.setParam('G', newG);
+                        }
+                      });
+                    },
                   ),
                 ),
               ),
@@ -93,7 +109,6 @@ class _ControlPanelState extends State<ControlPanel> {
           // ── Row 2: ルール選択 + ボタン群 ──
           Row(
             children: [
-              // ルール選択ドロップダウン
               _label('RULE'),
               const SizedBox(width: 8),
               _RuleDropdown(
@@ -104,7 +119,6 @@ class _ControlPanelState extends State<ControlPanel> {
               const SizedBox(width: 10),
               const Spacer(),
 
-              // 正多角形化
               _IconBtn(
                 icon:    Icons.change_history,
                 tooltip: '正多角形化',
@@ -113,7 +127,6 @@ class _ControlPanelState extends State<ControlPanel> {
               ),
               const SizedBox(width: 6),
 
-              // お掃除
               _IconBtn(
                 icon:    Icons.cleaning_services,
                 tooltip: 'フィールド初期化',
@@ -122,7 +135,6 @@ class _ControlPanelState extends State<ControlPanel> {
               ),
               const SizedBox(width: 6),
 
-              // 再起動
               _IconBtn(
                 icon:    Icons.restart_alt,
                 tooltip: '再起動',
@@ -131,6 +143,27 @@ class _ControlPanelState extends State<ControlPanel> {
               ),
             ],
           ),
+
+          // ── Row 3: 補足情報（Gravity用） ──
+          if (_selected == 'gravity') ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _label('AUTO-SYNCED G: '),
+                Text(
+                  (widget.controller.rule is GravityRule 
+                      ? (widget.controller.rule as GravityRule).g 
+                      : 1.0).toStringAsFixed(2),
+                  style: const TextStyle(
+                    color: Color(0xFF00FFB2), 
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -165,7 +198,6 @@ class _ControlPanelState extends State<ControlPanel> {
   );
 }
 
-// ── ドロップダウン ──────────────────────────────
 class _RuleDropdown extends StatelessWidget {
   final String         value;
   final List<String>   options;
@@ -207,7 +239,6 @@ class _RuleDropdown extends StatelessWidget {
   }
 }
 
-// ── アイコンボタン ──────────────────────────────
 class _IconBtn extends StatelessWidget {
   final IconData icon;
   final String   tooltip;
