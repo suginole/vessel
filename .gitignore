@@ -1,0 +1,4 @@
+
+# Android signing
+android/key.properties
+*.jks
