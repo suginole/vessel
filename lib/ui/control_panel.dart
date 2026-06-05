@@ -171,26 +171,62 @@ class _ControlPanelState extends State<ControlPanel> {
           if (_mode == PanelMode.full && params.isNotEmpty) ...[
             const SizedBox(height: 12),
             // ── Dynamic Params (Full Only) ──
-            ...params.where((p) => !(ruleName == 'gravity' && p.key == 'G')).map((p) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(width: 80, child: _label(p.label.toUpperCase())),
-                  Expanded(
-                    child: _buildSlider(
-                      value: p.getCurrentValue?.call() ?? p.defaultValue,
-                      min: p.min, max: p.max,
-                      divisions: p.divisions,
-                      activeColor: const Color(0xFF80C8FF),
-                      onChanged: (v) {
-                        widget.controller.setParam(p.key, v);
-                        widget.onRebuild();
-                      },
+            ...params.where((p) => !(ruleName == 'gravity' && p.key == 'G')).map((p) {
+              final isChargeParam = ruleName == 'electric' && p.key == 'charge';
+              final chargeValue = isChargeParam ? (p.getCurrentValue?.call() ?? p.defaultValue).toInt() : 0;
+              final chargeLabel = isChargeParam
+                  ? (chargeValue == 0 ? 'Monopole' : (chargeValue > 0 ? '+$chargeValue' : '$chargeValue'))
+                  : '';
+              
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(width: 80, child: _label(p.label.toUpperCase())),
+                        Expanded(
+                          child: _buildSlider(
+                            value: p.getCurrentValue?.call() ?? p.defaultValue,
+                            min: p.min, max: p.max,
+                            divisions: p.divisions,
+                            activeColor: const Color(0xFF80C8FF),
+                            onChanged: (v) {
+                              widget.controller.setParam(p.key, v);
+                              widget.onRebuild();
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            )),
+                    if (isChargeParam) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _label('-5'),
+                          _label('0'),
+                          _label('+5'),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        chargeLabel,
+                        style: TextStyle(
+                          color: chargeValue == 0
+                              ? Colors.white
+                              : (chargeValue > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF)),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }).toList(),
           ],
           
           if (_mode != PanelMode.closed && ruleName == 'gravity') ...[
