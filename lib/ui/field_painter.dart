@@ -15,13 +15,23 @@ class FieldPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (gridImage != null) {
+      // ピクセル感を消すためのブラーフィルター
+      final paint = Paint()
+        ..imageFilter = ui.ImageFilter.blur(
+          sigmaX: 1.2, 
+          sigmaY: 1.2, 
+          tileMode: TileMode.clamp,
+        );
+
+      canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), paint);
       paintImage(
         canvas: canvas,
         rect: Rect.fromLTWH(0, 0, size.width, size.height),
         image: gridImage!,
         fit: BoxFit.fill,
-        filterQuality: FilterQuality.medium, // アンチエイリアスを効かせる
+        filterQuality: FilterQuality.high,
       );
+      canvas.restore();
     }
 
     // 境界線の描画（ジャギーを隠すために少し太めで滑らかな線を重ねる）
