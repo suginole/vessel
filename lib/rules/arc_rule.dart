@@ -223,7 +223,12 @@ class ArcRule extends FieldRule {
       for (int x = 0; x < w; x++) {
         final i = y * w + x;
         if (mask[i] == 0.0) { _phi[i] =  1.0; continue; }
-        if (_isTouchCell(x, y)) { _phi[i] = -1.0; }
+        if (_isTouchCell(x, y)) { _phi[i] = -1.0; continue; }
+        
+        // 既存経路も導体（アース）として扱うことで、他の経路を引き寄せる
+        if (_channel[i] > 0.2) {
+          _phi[i] = -1.0;
+        }
       }
     }
 
@@ -233,6 +238,8 @@ class ArcRule extends FieldRule {
           final i = y * w + x;
           if (mask[i] == 0.0)     continue;
           if (_isTouchCell(x, y)) continue;
+          if (_channel[i] > 0.2)  continue;
+          
           _phi[i] = (_phi[i+1] + _phi[i-1] +
                      _phi[i+w] + _phi[i-w]) * 0.25;
         }
