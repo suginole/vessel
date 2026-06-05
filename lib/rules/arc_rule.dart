@@ -60,21 +60,15 @@ class ArcRule extends FieldRule {
         for (int x = 1; x < w - 1; x++) {
           final i = y * w + x;
           if (mask[i] == 0) {
-            phi[i] = -1.0; // 境界はアース
+            phi[i] = voltage; // 境界は高電圧源 (+)
             continue;
           }
           if (touchPos != null && (x == touchPos!.dx.toInt() && y == touchPos!.dy.toInt())) {
-            phi[i] = voltage; // タッチ点は高電圧
+            phi[i] = -1.0; // タッチ点はアース (-)
             continue;
           }
           if (broken[i] > 0.5) {
-            // 破壊済みセルは導体 (近傍の最大電位を引き継ぐ)
-            double maxP = -1.0;
-            if (phi[i + 1] > maxP) maxP = phi[i + 1];
-            if (phi[i - 1] > maxP) maxP = phi[i - 1];
-            if (phi[i + w] > maxP) maxP = phi[i + w];
-            if (phi[i - w] > maxP) maxP = phi[i - w];
-            phi[i] = maxP;
+            phi[i] = -1.0; // 破壊済みセルは導体 (アース)
           } else {
             // 絶縁体: ∇²φ = 0
             phi[i] = (phi[i + 1] + phi[i - 1] + phi[i + w] + phi[i - w]) * 0.25;
@@ -94,7 +88,6 @@ class ArcRule extends FieldRule {
           for (int x = 1; x < w - 1; x++) {
             final i = y * w + x;
             if (mask[i] > 0 && broken[i] < 0.5) {
-              // 破壊済みに隣接しているか、タッチ点近傍か
               bool isNear = false;
               if (touchPos != null && (x - touchPos!.dx).abs() <= 1 && (y - touchPos!.dy).abs() <= 1) {
                 isNear = true;
@@ -104,11 +97,11 @@ class ArcRule extends FieldRule {
 
               if (isNear) {
                 frontier.add(i);
-                // p ∝ |φ|^η (負の電位はアースに近いので、絶対値が大きいほどアースに近く破壊されやすい)
-                // ただし今回はプラス極から伸ばすので、phiが高いほどプラス極に近く、
-                // 周囲の電位差が大きいところ（アースに近いところ）が選ばれるべき
-                // ここでは簡略化して phi の勾配を考慮した確率にする
-                double p = pow(phi[i].abs(), eta).toDouble();
+                // 電位勾配 |∇φ| に基づく破壊確率
+                double dPhiX = phi[i + 1] - phi[i - 1];
+                double dPhiY = phi[i + w] - phi[i - w];
+                double gradMag = sqrt(dPhiX * dPhiX + dPhiY * dPhiY);
+                double p = pow(gradMag, eta).toDouble();
                 probs.add(p);
                 sumP += p;
               }
@@ -124,8 +117,8 @@ class ArcRule extends FieldRule {
             if (r <= currentSum) {
               final idx = frontier[i];
               broken[idx] = 1.0;
-              // 境界到達チェック
-              if (phi[idx] <= -0.9) {
+              // 境界到達チェック (境界付近は高電圧なので phi が大きい)
+              if (phi[idx] >= voltage * 0.9) {
                 isDischarged = true;
                 flashAlpha = 1.0;
               }
