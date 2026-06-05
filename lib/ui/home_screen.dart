@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// import 'package:audioplayers/audioplayers.dart'; // Webビルドエラー回避のため一時コメントアウト
 import '../rules/field_rule.dart';
 import '../rules/wave_rule.dart';
 import '../rules/gravity_rule.dart';
@@ -11,9 +10,6 @@ import '../rules/arc_rule.dart';
 import '../rules/electric_rule.dart';
 import 'game_screen.dart';
 
-// Global Audio Player for persistent BGM
-// final AudioPlayer _bgmPlayer = AudioPlayer();
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -22,18 +18,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // _startBgm();
-  }
-
-  // Future<void> _startBgm() async {
-  //   await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
-  //   await _bgmPlayer.play(AssetSource('audio/piano_loop.mp3'));
-  //   await _bgmPlayer.setVolume(0.4);
-  // }
-
   void _launch(BuildContext context, FieldRule rule) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (c) => GameScreen(initialRule: rule)),
@@ -42,16 +26,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isJa = Localizations.localeOf(context).languageCode == 'ja';
+
     return Scaffold(
       backgroundColor: const Color(0xFF05050A),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: RadialGradient(
             center: Alignment.center,
             radius: 1.5,
             colors: [
-              const Color(0xFF101020),
-              const Color(0xFF05050A),
+              Color(0xFF101020),
+              Color(0xFF05050A),
             ],
           ),
         ),
@@ -77,30 +63,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'MULTIMODAL PHYSICS SIMULATOR',
+                      isJa ? '多様な物理シミュレーター' : 'MULTIMODAL PHYSICS SIMULATOR',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.4),
                         fontSize: 12,
-                        letterSpacing: 4,
+                        letterSpacing: isJa ? 2 : 4,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            _section('CLASSICAL PHYSICS', [
-              _item(context, 'WAVE', 'Wave propagation & interference', const Color(0xFF00C8FF), WaveRule(), Icons.waves_rounded),
-              _item(context, 'GRAVITY', 'Orbital mechanics & N-body', const Color(0xFFFF3D6B), GravityRule(), Icons.public_rounded),
-              _item(context, 'ELECTRIC', 'Coulomb force & Annihilation', const Color(0xFF80C8FF), ElectricRule(), Icons.flash_on_rounded),
-              _item(context, 'HEAT', 'Thermal diffusion & Entropy', const Color(0xFFFF8A00), HeatRule(), Icons.thermostat_rounded),
+            _section(isJa ? '古典物理' : 'CLASSICAL PHYSICS', [
+              _item(context, 'WAVE', isJa ? '波の伝播と干渉' : 'Wave propagation & interference', const Color(0xFF00C8FF), WaveRule(), Icons.waves_rounded),
+              _item(context, 'GRAVITY', isJa ? '軌道力学・多体問題' : 'Orbital mechanics & N-body', const Color(0xFFFF3D6B), GravityRule(), Icons.public_rounded),
+              _item(context, 'ELECTRIC', isJa ? 'クーロン力と対消滅' : 'Coulomb force & Annihilation', const Color(0xFF80C8FF), ElectricRule(), Icons.flash_on_rounded),
+              _item(context, 'HEAT', isJa ? '熱拡散とエントロピー' : 'Thermal diffusion & Entropy', const Color(0xFFFF8A00), HeatRule(), Icons.thermostat_rounded),
             ]),
-            _section('CHEMICAL & BIOLOGICAL', [
-              _item(context, 'GRAY-SCOTT', 'Reaction-diffusion patterns', const Color(0xFF00FFB2), GrayScottRule(), Icons.biotech_rounded),
-              _item(context, 'BZ REACTION', 'Oscillatory wave patterns', const Color(0xFFFF00F5), BZRule(), Icons.opacity_rounded),
+            _section(isJa ? '化学・生物' : 'CHEMICAL & BIOLOGICAL', [
+              _item(context, 'GRAY-SCOTT', isJa ? '反応拡散パターン' : 'Reaction-diffusion patterns', const Color(0xFF00FFB2), GrayScottRule(), Icons.biotech_rounded),
+              _item(context, 'BZ REACTION', isJa ? '振動波パターン' : 'Oscillatory wave patterns', const Color(0xFFFF00F5), BZRule(), Icons.opacity_rounded),
             ]),
-            _section('DISCRETE SYSTEMS', [
-              _item(context, 'LIFE', "Conway's Game of Life", const Color(0xFFFFFFFF), LifeRule(), Icons.grid_view_rounded),
-              _item(context, 'ARC', 'Dielectric breakdown model', const Color(0xFF7000FF), ArcRule(), Icons.electric_bolt_rounded),
+            _section(isJa ? '離散系' : 'DISCRETE SYSTEMS', [
+              _item(context, 'LIFE', isJa ? 'コンウェイのライフゲーム' : "Conway's Game of Life", const Color(0xFFFFFFFF), LifeRule(), Icons.grid_view_rounded),
+              _item(context, 'ARC', isJa ? '絶縁破壊モデル' : 'Dielectric breakdown model', const Color(0xFF7000FF), ArcRule(), Icons.electric_bolt_rounded),
             ]),
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
           ],
