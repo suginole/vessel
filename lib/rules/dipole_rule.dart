@@ -62,11 +62,11 @@ class DipoleRule extends FieldRule {
 
   @override
   List<RuleParam> get params => [
-    RuleParam(key: 'k', label: 'Coulomb K', min: 10.0, max: 500.0, defaultValue: 100.0),
-    RuleParam(key: 'separation', label: 'Separation', min: 1.0, max: 10.0, defaultValue: 4.0),
-    RuleParam(key: 'initialAngularVel', label: 'Initial Rot', min: 0.0, max: 1.0, defaultValue: 0.1),
-    RuleParam(key: 'damping', label: 'Damping', min: 0.9, max: 1.0, defaultValue: 0.98),
-    RuleParam(key: 'visualizationMode', label: 'Mode (0:Pot, 1:E, 2:Rad)', min: 0, max: 2, defaultValue: 0),
+    RuleParam(key: 'k', label: 'Coulomb K', min: 10.0, max: 500.0, defaultValue: 100.0, getCurrentValue: () => k),
+    RuleParam(key: 'separation', label: 'Separation', min: 1.0, max: 10.0, defaultValue: 4.0, getCurrentValue: () => separation),
+    RuleParam(key: 'initialAngularVel', label: 'Initial Rot', min: 0.0, max: 1.0, defaultValue: 0.1, getCurrentValue: () => initialAngularVel),
+    RuleParam(key: 'damping', label: 'Damping', min: 0.9, max: 1.0, defaultValue: 0.98, getCurrentValue: () => damping),
+    RuleParam(key: 'visualizationMode', label: 'Mode (0:Pot, 1:E, 2:Rad)', min: 0, max: 2, defaultValue: 0, getCurrentValue: () => visualizationMode.toDouble(), divisions: 2),
   ];
 
   @override

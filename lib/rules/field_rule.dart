@@ -86,42 +86,41 @@ class RenderConfig {
     return rgb[ch].clamp(0, 255);
   });
 
-  // 電場用等高線（滑らかに均す）
+  // 電場用等高線（ポテンシャル0で白、離れると赤/青）
   static RenderConfig electric() => RenderConfig(pixel: (u, m, ch) {
     final v = u;
     final absV = v.abs();
-    final logV = log(1.0 + absV * 0.01);
+    
+    // 0付近を白く、離れると色を付ける
+    // t = 0 で白、t が大きくなると各色へ
+    final t = (absV * 0.2).clamp(0.0, 1.0);
+    
+    double r = 255, g = 255, b = 255;
+    
+    if (v > 0) {
+      // 正電位：青と緑を減らして赤にする
+      g = 255 - (t * 200);
+      b = 255 - (t * 255);
+    } else {
+      // 負電位：赤と緑を減らして青にする
+      r = 255 - (t * 255);
+      g = 255 - (t * 180);
+    }
+    
+    // 等高線の描画
+    final logV = log(1.0 + absV * 0.1);
     const levels = 8.0;
     final val = logV * levels;
     final frac = val - val.floor();
-    
-    // 滑らかな等高線ウェイト
     final contourWeight = _smoothstep(0.15, 0.0, frac) + _smoothstep(0.85, 1.0, frac);
-    final isVisible = logV > 0.001;
     
-    if (isVisible && contourWeight > 0.01) {
-      final w = contourWeight * m;
-      if (v > 0) {
-        final rgb = [(w * 255).toInt(), (w * 0.3 * 255).toInt(), (w * 0.1 * 255).toInt()];
-        return rgb[ch].clamp(0, 255);
-      } else {
-        final rgb = [(w * 0.1 * 255).toInt(), (w * 0.4 * 255).toInt(), (w * 255).toInt()];
-        return rgb[ch].clamp(0, 255);
-      }
-    }
+    // 等高線部分は少し暗くしてエッジを立たせる（または明るくする）
+    // ここでは白ベースなので、少し暗くして「溝」のように見せる
+    final cw = contourWeight * 50;
+    r -= cw; g -= cw; b -= cw;
     
-    // オーラ部分（ここも滑らかに）
-    if (absV > 0.1) {
-      final aura = (logV * 15 * m).toInt();
-      if (v > 0) {
-        final rgb = [aura, (aura * 0.2).toInt(), 0];
-        return rgb[ch].clamp(0, 255);
-      } else {
-        final rgb = [0, (aura * 0.3).toInt(), aura];
-        return rgb[ch].clamp(0, 255);
-      }
-    }
-    return 0;
+    final rgb = [r.toInt(), g.toInt(), b.toInt()];
+    return (rgb[ch] * m).toInt().clamp(0, 255);
   });
 
   // Gray-Scott用
@@ -159,27 +158,36 @@ class RenderConfig {
   // アーク放電用（ビット感を抑える）
   static RenderConfig arc() => RenderConfig(pixel: (u, m, ch) {
     final v = u.clamp(0.0, 2.0);
-    int r, g, b;
     
+    // 電場と同様に等高線を描画してビット感を抑える
+    const levels = 6.0;
+    final val = v * levels;
+    final frac = val - val.floor();
+    final contourWeight = _smoothstep(0.15, 0.0, frac) + _smoothstep(0.85, 1.0, frac);
+    
+    int r, g, b;
     if (v < 0.15) {
-      // オーラ：線形補間で滑らかに
       final t = v / 0.15;
       r = (t * 40).toInt();
       g = (t * 10).toInt();
       b = (t * 100).toInt();
     } else if (v < 1.0) {
-      // グロー：smoothstepで境界を均す
       final t = _smoothstep(0.15, 1.0, v);
       r = (40 + t * 160).toInt();
       g = (10 + t * 200).toInt();
       b = 255;
     } else {
-      // コア：白飛びを滑らかに
       final t = _smoothstep(1.0, 1.5, v);
       r = (200 + t * 55).toInt();
       g = (210 + t * 45).toInt();
       b = 255;
     }
+    
+    // 等高線を加算（滑らかなハイライト）
+    final cw = (contourWeight * 0.4 * 255 * m).toInt();
+    r = (r + cw).clamp(0, 255);
+    g = (g + cw).clamp(0, 255);
+    b = (b + cw).clamp(0, 255);
     
     final rgb = [r, g, b];
     return (rgb[ch] * m).toInt().clamp(0, 255);
