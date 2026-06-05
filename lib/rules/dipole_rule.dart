@@ -422,13 +422,18 @@ class DipoleRule extends FieldRule {
     if (_dragStart == null) return;
     final delta = pos - _dragStart!;
     
+    // 速度を大幅に強化 (0.05 -> 0.8) し、最小・最大速度も制限
+    double speed = delta.distance * 0.8;
+    Offset unitVel = delta.distance > 0 ? delta / delta.distance : Offset.zero;
+    
     dipoles.add(ElectricDipole(
-      pos: _dragStart!, // 開始点に配置
-      vel: delta * 0.05,
+      pos: _dragStart!, // ドラッグ開始点に配置
+      vel: unitVel * speed,
       angle: math.atan2(delta.dy, delta.dx),
       angularVel: initialAngularVel,
       separation: separation,
     ));
+    
     _dragStart = null;
     _dragCurrent = null;
   }
