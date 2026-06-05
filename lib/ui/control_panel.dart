@@ -154,7 +154,11 @@ class _ControlPanelState extends State<ControlPanel> {
           // ── 動的パラメータスライダー ──
           if (params.isNotEmpty) ...[
             const SizedBox(height: 8),
-            ...params.map((p) => _buildParamSlider(p)),
+            ...params.where((p) {
+              // Gravityモードの場合、Gスライダーは頂点数と同期するため非表示にする
+              if (_selected == 'gravity' && p.key == 'G') return false;
+              return true;
+            }).map((p) => _buildParamSlider(p)),
           ],
 
           // Gravity用の同期情報表示

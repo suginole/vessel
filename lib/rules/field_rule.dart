@@ -64,25 +64,15 @@ class RenderConfig {
     return rgb[ch];
   });
 
-  // Gray-Scott用
+  // Gray-Scott用 (U成分単体で可視化: 低いほど反応済み)
   static RenderConfig bio() => RenderConfig(pixel: (u, m, ch) {
-    // u: U成分, uPrev: V成分 (今回は u のみ渡される想定なので工夫が必要)
-    // FieldRule側で u に V-U などの情報を込めて渡すか、RenderConfigを拡張する
-    // ここでは簡易的に u を V成分と見なし、0.5を閾値にする
-    final v = u.clamp(0.0, 1.0);
-    int r, g, b;
-    if (v > 0.5) {
-      // 反応済み：黄緑
-      r = 150; g = 255; b = 50;
-    } else if (v > 0.4) {
-      // 境界：白
-      r = 255; g = 255; b = 255;
-    } else {
-      // 未反応：青
-      r = 30; g = 50; b = 150;
-    }
-    final rgb = [r, g, b];
-    return (rgb[ch] * m).toInt().clamp(0, 255);
+    final v = (1.0 - u).clamp(0.0, 1.0); // U低い=V高い=パターン
+    final rgb = [
+      (v * 0.2 * 255 * m).toInt().clamp(0, 255), // R 暗め
+      (v * 0.9 * 255 * m).toInt().clamp(0, 255), // G 明るく
+      (v * 0.4 * 255 * m).toInt().clamp(0, 255), // B 中程度
+    ];
+    return rgb[ch];
   });
 
   // 熱分布カラーマップ
