@@ -58,7 +58,7 @@ class DipoleRule extends FieldRule {
   double initialAngularVel = 0.1;
   double damping = 0.98;
   double interactionStrength = 5.0; // 並進運動を強化
-  double lightSpeed = 2.0;
+  double lightSpeed = 0.5; // クーラン条件を考慮して落とす
   
   // Visualization mode: 0: Potential, 1: Electric Field, 2: Radiation
   int visualizationMode = 0;
@@ -103,54 +103,44 @@ class DipoleRule extends FieldRule {
     _fieldLines = null;
   }
 
+  // 対消滅パルスを一時保存するリスト
+  final List<Offset> _pendingPulses = [];
+
   @override
   void step(Grid grid, double dt) {
-    // 1. 波動方程式による電磁波伝播 (visualizationMode == 2 の時)
+    // 1. 物理演算と相互作用 (Annihilation & Binding)
+    if (dipoles.isNotEmpty) {
+      final List<Offset> forces = List.filled(dipoles.length, Offset.zero);
+      final List<double> torques = List.filled(dipoles.length, 0.0);
+
+      for (int i = 0; i < dipoles.length; i++) {
+        final d = dipoles[i];
+        final eField = _computeExternalEField(d.pos, i);
+        final p = d.moment;
+        torques[i] = (p.dx * eField.dy - p.dy * eField.dx);
+        forces[i] = _computeForce(d, i);
+      }
+
+      for (int i = 0; i < dipoles.length; i++) {
+        final d = dipoles[i];
+        d.vel += forces[i] * interactionStrength * dt;
+        d.angularVel += torques[i] * interactionStrength * dt;
+        d.pPrev2 = d.pPrev;
+        d.pPrev = d.moment;
+        d.update(dt, damping);
+        _reflectAtBoundary(d, grid);
+      }
+      _updateInteractions(grid, dt);
+    }
+
+    // 2. 視覚化
     if (visualizationMode == 2) {
+      // Radiationモード: 波動方程式で更新
       _stepWave(grid, dt);
-    }
-
-    if (dipoles.isEmpty) return;
-
-    // 2. Physics: Compute interactions
-    final List<Offset> forces = List.filled(dipoles.length, Offset.zero);
-    final List<double> torques = List.filled(dipoles.length, 0.0);
-
-    for (int i = 0; i < dipoles.length; i++) {
-      final d = dipoles[i];
-      final eField = _computeExternalEField(d.pos, i);
-      
-      // Torque: tau = p x E
-      final p = d.moment;
-      torques[i] = (p.dx * eField.dy - p.dy * eField.dx);
-      
-      // Force: F = grad(p . E) using finite difference
-      forces[i] = _computeForce(d, i);
-    }
-
-    // 3. Physics: Update states
-    for (int i = 0; i < dipoles.length; i++) {
-      final d = dipoles[i];
-      d.vel += forces[i] * interactionStrength * dt;
-      d.angularVel += torques[i] * interactionStrength * dt;
-      
-      d.pPrev2 = d.pPrev;
-      d.pPrev = d.moment;
-      
-      d.update(dt, damping);
-      _reflectAtBoundary(d, grid);
-    }
-
-    // 4. Annihilation & Binding logic
-    _updateInteractions(grid, dt);
-
-    // 5. Visualization: Write to grid
-    _writeToGrid(grid);
-    
-    // 6. Visualization: Compute field lines (Radiationモードのみ)
-    if (visualizationMode == 2) {
       _computeFieldLines(grid);
     } else {
+      // Potential / E-Fieldモード: 静的に書き込み
+      _writeToGrid(grid);
       _fieldLines = null;
     }
   }
@@ -167,18 +157,27 @@ class DipoleRule extends FieldRule {
       for (int x = 1; x < w - 1; x++) {
         final i = y * w + x;
         final lap = u[i+1] + u[i-1] + u[i+w] + u[i-w] - 4 * u[i];
-        next[i] = (2 * u[i] - uPrev[i] + c2 * lap) * 0.98; // 減衰を少し強める
+        next[i] = (2 * u[i] - uPrev[i] + c2 * lap) * 0.98;
       }
     }
     
-    // 双極子の加速度を波源として注入
+    // 双極子の加速度放射を注入
     for (final d in dipoles) {
       final pDotDot = (d.moment - d.pPrev * 2.0 + d.pPrev2);
       final idx = d.pos.dy.toInt() * w + d.pos.dx.toInt();
       if (idx >= 0 && idx < u.length) {
-        next[idx] += pDotDot.distance * 10.0;
+        next[idx] += pDotDot.distance * 15.0;
       }
     }
+
+    // 対消滅パルスを注入
+    for (final pos in _pendingPulses) {
+      final idx = pos.dy.toInt() * w + pos.dx.toInt();
+      if (idx >= 0 && idx < u.length) {
+        next[idx] += 100.0; // 強力なパルス
+      }
+    }
+    _pendingPulses.clear();
 
     uPrev.setAll(0, u);
     u.setAll(0, next);
@@ -200,12 +199,8 @@ class DipoleRule extends FieldRule {
           toRemove.add(i);
           toRemove.add(j);
           
-          // パルス注入
-          final contactPos = (dipoles[i].posPlus + dipoles[j].posMinus) * 0.5;
-          final idx = contactPos.dy.toInt() * grid.w + contactPos.dx.toInt();
-          if (idx >= 0 && idx < grid.u.length) {
-            grid.u[idx] += annihilationEnergy;
-          }
+          // パルスをキューに追加
+          _pendingPulses.add((dipoles[i].posPlus + dipoles[j].posMinus) * 0.5);
         }
       }
     }
@@ -352,6 +347,8 @@ class DipoleRule extends FieldRule {
   }
 
   void _writeToGrid(Grid grid) {
+    if (visualizationMode == 2) return; // Radiationモードでは波動方程式がgrid.uを管理する
+
     for (int y = 0; y < grid.h; y++) {
       for (int x = 0; x < grid.w; x++) {
         final pos = Offset(x.toDouble(), y.toDouble());
