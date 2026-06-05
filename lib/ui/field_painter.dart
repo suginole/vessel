@@ -139,25 +139,29 @@ class FieldPainter extends CustomPainter {
     final sy = size.height / kH;
     final paint = Paint();
     
-    // 1. ドラッグ中のプレビュー矢印
-    if (rule.dragStart != null && rule.dragCurrent != null) {
+    // 1. ドラッグ中のプレビュー矢印と配置予定の双極子
+    if (rule.dragStart != null && rule.dragCurrent != null && rule.placing != null) {
       final p1 = Offset(rule.dragStart!.dx * sx, rule.dragStart!.dy * sy);
       final p2 = Offset(rule.dragCurrent!.dx * sx, rule.dragCurrent!.dy * sy);
       
       // 矢印の線
       canvas.drawLine(
         p1, p2,
-        paint..color = Colors.white.withValues(alpha: 0.5)..strokeWidth = 2.0,
+        paint..color = Colors.yellowAccent.withValues(alpha: 0.6)..strokeWidth = 2.0,
       );
       
-      // 先端の仮双極子プレビュー
-      final angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx);
-      final sep = rule.separation * sx;
-      final posPlus = p1 + Offset(math.cos(angle), math.sin(angle)) * (sep * 0.5);
-      final posMinus = p1 - Offset(math.cos(angle), math.sin(angle)) * (sep * 0.5);
+      // 配置予定の双極子プレビュー
+      final d = rule.placing!;
+      final pos = Offset(d.pos.dx * sx, d.pos.dy * sy);
+      final angle = d.angle;
+      final sep = d.separation * sx;
       
-      canvas.drawCircle(posPlus, 4.0, paint..color = const Color(0xFFFF3D6B).withValues(alpha: 0.5));
-      canvas.drawCircle(posMinus, 4.0, paint..color = const Color(0xFF00C8FF).withValues(alpha: 0.5));
+      final posPlus = pos + Offset(math.cos(angle), math.sin(angle)) * (sep * 0.5);
+      final posMinus = pos - Offset(math.cos(angle), math.sin(angle)) * (sep * 0.5);
+      
+      canvas.drawCircle(posPlus, 5.0, paint..color = const Color(0xFFFF3D6B).withValues(alpha: 0.7));
+      canvas.drawCircle(posMinus, 5.0, paint..color = const Color(0xFF00C8FF).withValues(alpha: 0.7));
+      canvas.drawLine(posPlus, posMinus, paint..color = Colors.white.withValues(alpha: 0.5)..strokeWidth = 1.5);
     }
 
     // 2. 結合線の描画

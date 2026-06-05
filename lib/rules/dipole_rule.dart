@@ -63,8 +63,12 @@ class DipoleRule extends FieldRule {
   // Visualization mode: 0: Potential, 1: Electric Field, 2: Radiation
   int visualizationMode = 0;
 
+  // プレビュー用
+  ElectricDipole? _placing;
   Offset? _dragStart;
   Offset? _dragCurrent;
+  
+  ElectricDipole? get placing => _placing;
   Offset? get dragStart => _dragStart;
   Offset? get dragCurrent => _dragCurrent;
 
@@ -98,6 +102,10 @@ class DipoleRule extends FieldRule {
   @override
   void init(Grid grid) {
     dipoles.clear();
+    bonds.clear();
+    _placing = null;
+    _dragStart = null;
+    _dragCurrent = null;
     grid.u.fillRange(0, grid.u.length, 0.0);
     grid.uPrev.fillRange(0, grid.uPrev.length, 0.0);
     _fieldLines = null;
@@ -407,31 +415,37 @@ class DipoleRule extends FieldRule {
   void onTouchStart(Grid grid, Offset pos) {
     _dragStart = pos;
     _dragCurrent = pos;
+    _placing = ElectricDipole(
+      pos: pos,
+      vel: Offset.zero,
+      angle: 0.0,
+      angularVel: initialAngularVel,
+      separation: separation,
+    );
   }
 
   @override
   void onTouchMove(Grid grid, Offset pos) {
     _dragCurrent = pos;
+    if (_placing != null && _dragStart != null) {
+      final delta = pos - _dragStart!;
+      // 速度スケールを GravityRule に合わせつつ、少し強めに (0.004 -> 0.1)
+      _placing!.vel = delta * 0.1;
+      // 角度をドラッグ方向に同期
+      if (delta.distance > 0.1) {
+        _placing!.angle = math.atan2(delta.dy, delta.dx);
+      }
+    }
   }
 
   @override
   void onTouchEnd(Grid grid, Offset pos) {
-    if (_dragStart == null) return;
-    final delta = pos - _dragStart!;
-    
-    // 速度を大幅に強化 (0.05 -> 0.8) し、最小・最大速度も制限
-    double speed = delta.distance * 0.8;
-    Offset unitVel = delta.distance > 0 ? delta / delta.distance : Offset.zero;
-    
-    dipoles.add(ElectricDipole(
-      pos: _dragStart!, // ドラッグ開始点に配置
-      vel: unitVel * speed,
-      angle: math.atan2(delta.dy, delta.dx),
-      angularVel: initialAngularVel,
-      separation: separation,
-    ));
-    
-    _dragStart = null;
-    _dragCurrent = null;
+    if (_placing != null) {
+      dipoles.add(_placing!);
+      if (dipoles.length > 8) dipoles.removeAt(0); // 最大数を少し増やす
+      _placing = null;
+      _dragStart = null;
+      _dragCurrent = null;
+    }
   }
 }
