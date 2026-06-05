@@ -202,8 +202,8 @@ class ElectricRule extends FieldRule {
         final distSq = r.dx * r.dx + r.dy * r.dy;
         const double epsSq = 25.0;
         final invDistCube = 1.0 / pow(distSq + epsSq, 1.5);
-        final q1 = bodies[i].isMonopole ? 1.0 : bodies[i].charge;
-        final q2 = bodies[j].isMonopole ? 1.0 : bodies[j].charge;
+        final q1 = bodies[i].isMonopole ? 0.0 : bodies[i].charge;
+        final q2 = bodies[j].isMonopole ? 0.0 : bodies[j].charge;
         acc -= r * (kConstant * q1 * q2 * 10000.0 * invDistCube);
       }
       bodies[i].vel += acc * dtD;
@@ -297,7 +297,7 @@ class ElectricRule extends FieldRule {
       for (var b in bodies) {
         final dx = b.pos.dx - x, dy = b.pos.dy - y;
         const double epsSq = 25.0;
-        final q = b.isMonopole ? 1.0 : b.charge;
+        final q = b.charge;
         phi += (kConstant * q * 50000.0) / sqrt(dx * dx + dy * dy + epsSq);
       }
       u[i] = phi;
@@ -309,8 +309,9 @@ class ElectricRule extends FieldRule {
     dragStart = p;
     final isZero = currentCharge == 0;
     placing = ElectricBody(
-      pos: p, vel: Offset.zero, 
-      charge: isZero ? 1.0 : currentCharge,
+      pos: p,
+      vel: Offset.zero,
+      charge: currentCharge,  // 0.0 をそのまま渡す
       isMonopole: isZero,
     );
   }
