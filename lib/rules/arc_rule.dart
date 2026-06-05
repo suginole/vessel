@@ -65,20 +65,23 @@ class ArcRule extends FieldRule {
       // ── 2. 経路を毎フレーム再生成 ──────────────
       // 前フレームの経路を減衰（残像）
       for (int i = 0; i < _channel.length; i++) {
-        _channel[i] *= 0.4;  // 素早く消す
+        _channel[i] *= 0.3;  // さらに素早く消してジッターを際立たせる
       }
+
+      // フリッカー (ちらつき)
+      final flicker = 0.8 + _rng.nextDouble() * 0.4;
 
       // boltCount本の経路を独立に生成
       final n = boltCount.toInt();
       bool anyReached = false;
 
       for (int b = 0; b < n; b++) {
-        final reached = _traceBolt(grid);
+        final reached = _traceBolt(grid, flicker);
         if (reached) anyReached = true;
       }
 
       if (anyReached) {
-        _flashAlpha = (_flashAlpha + 0.3).clamp(0.0, 1.0);
+        _flashAlpha = (_flashAlpha + 0.2).clamp(0.0, 1.0);
       }
     } else {
       // タッチなし → 経路を減衰
@@ -103,7 +106,7 @@ class ArcRule extends FieldRule {
 
   // 1本の経路をタッチ点から壁まで一気にトレース
   // 1フレームで完結 → 常につながって見える
-  bool _traceBolt(Grid grid) {
+  bool _traceBolt(Grid grid, double flicker) {
     final w    = grid.w;
     final h    = grid.h;
     final mask = grid.mask;
@@ -114,25 +117,22 @@ class ArcRule extends FieldRule {
     int    curIdx = ty * w + tx;
     
     // 初期方向：タッチ点周囲の電位勾配から決定
-    final dPhiX = _phi[curIdx + 1] - _phi[curIdx - 1];
-    final dPhiY = _phi[curIdx + w] - _phi[curIdx - w];
-    double gradX = dPhiX;
-    double gradY = dPhiY;
+    final dPhiX0 = _phi[curIdx + 1] - _phi[curIdx - 1];
+    final dPhiY0 = _phi[curIdx + w] - _phi[curIdx - w];
+    double gradX = dPhiX0;
+    double gradY = dPhiY0;
     
-    // 勾配がゼロに近い場合はランダム、そうでなければ勾配方向（+わずかな揺らぎ）
     if (gradX.abs() < 1e-6 && gradY.abs() < 1e-6) {
       gradX = _rng.nextDouble() - 0.5;
       gradY = _rng.nextDouble() - 0.5;
     } else {
-      // 複数ボルトが重なりすぎないよう、わずかに揺らす
-      gradX += (_rng.nextDouble() - 0.5) * 0.2;
-      gradY += (_rng.nextDouble() - 0.5) * 0.2;
+      gradX += (_rng.nextDouble() - 0.5) * 0.4; // 揺らぎを少し強める
+      gradY += (_rng.nextDouble() - 0.5) * 0.4;
     }
     
-    final len = sqrt(gradX * gradX + gradY * gradY) + 1e-6;
-    Offset curDir = Offset(gradX / len, gradY / len);
+    final len0 = sqrt(gradX * gradX + gradY * gradY) + 1e-6;
+    Offset curDir = Offset(gradX / len0, gradY / len0);
 
-    // 最大ステップ数（壁まで届かなければ打ち切り）
     const maxSteps = 512;
     final path = <int>[curIdx];
 
@@ -143,8 +143,7 @@ class ArcRule extends FieldRule {
       // 8近傍
       const ndx  = [ 1, -1,  0,  0,  1,  1, -1, -1];
       const ndy  = [ 0,  0,  1, -1,  1, -1,  1, -1];
-      const dist = [1.0, 1.0, 1.0, 1.0,
-                    1.414, 1.414, 1.414, 1.414];
+      const dist = [1.0, 1.0, 1.0, 1.0, 1.414, 1.414, 1.414, 1.414];
 
       final candidates = <int>[];
       final probs      = <double>[];
@@ -158,28 +157,25 @@ class ArcRule extends FieldRule {
 
         // 壁到達
         if (mask[ni] == 0.0) {
-          // 経路を書き込んで終了
-          for (final idx in path) {
-            _channel[idx] = 1.0;
+          // テーパリング（根元から先端に向かってわずかに細く・暗く）
+          for (int i = 0; i < path.length; i++) {
+            final t = 1.0 - (i / path.length) * 0.3;
+            _channel[path[i]] = (1.0 * t * flicker).clamp(0.0, 1.5);
           }
           return true;
         }
 
-        // 電界強度（前方差分重視）
         final dPhiFwd = (_phi[ni] - _phi[curIdx]).abs();
-        final dPhiX   = _phi[(ny*w+(nx+1).clamp(0,w-1))] -
-                        _phi[(ny*w+(nx-1).clamp(0,w-1))];
-        final dPhiY   = _phi[((ny+1).clamp(0,h-1)*w+nx)] -
-                        _phi[((ny-1).clamp(0,h-1)*w+nx)];
-        final grad    = (dPhiFwd * 3.0 +
-                         sqrt(dPhiX*dPhiX + dPhiY*dPhiY))
-                        / dist[d] + 1e-6;
+        final dPhiX   = _phi[(ny*w+(nx+1).clamp(0,w-1))] - _phi[(ny*w+(nx-1).clamp(0,w-1))];
+        final dPhiY   = _phi[((ny+1).clamp(0,h-1)*w+nx)] - _phi[((ny-1).clamp(0,h-1)*w+nx)];
+        
+        // ジッター（経路の微細な揺れ）を確率計算に含める
+        final jitter = 1.0 + (_rng.nextDouble() - 0.5) * 0.3;
+        final grad    = (dPhiFwd * 3.0 + sqrt(dPhiX*dPhiX + dPhiY*dPhiY)) / dist[d] * jitter + 1e-6;
 
-        // 直進性
         final unitDx = ndx[d] / dist[d];
         final unitDy = ndy[d] / dist[d];
-        final dot    = (curDir.dx * unitDx + curDir.dy * unitDy)
-                         .clamp(-1.0, 1.0);
+        final dot    = (curDir.dx * unitDx + curDir.dy * unitDy).clamp(-1.0, 1.0);
         final dirB   = pow((dot + 1.0) / 2.0 + 0.05, gamma);
 
         final p = pow(grad, eta) * dirB;
@@ -189,24 +185,6 @@ class ArcRule extends FieldRule {
       }
 
       if (candidates.isEmpty) break;
-
-      // 電界ゼロなら最大電界方向へ強制
-      if (sumP < 1e-8) {
-        // 最もphiが高い方向へ
-        int bestIdx = candidates[0];
-        double bestPhi = _phi[candidates[0]];
-        for (final c in candidates) {
-          if (_phi[c] > bestPhi) { bestPhi = _phi[c]; bestIdx = c; }
-        }
-        final bx = bestIdx % w, by = bestIdx ~/ w;
-        final ddx = (bx - cx).toDouble();
-        final ddy = (by - cy).toDouble();
-        final dl  = sqrt(ddx*ddx + ddy*ddy) + 1e-6;
-        curDir = Offset(ddx/dl, ddy/dl);
-        curIdx = bestIdx;
-        path.add(curIdx);
-        continue;
-      }
 
       // 確率的選択
       double r = _rng.nextDouble() * sumP;
@@ -228,8 +206,9 @@ class ArcRule extends FieldRule {
     }
 
     // 壁未到達でも途中経路を薄く表示
-    for (final idx in path) {
-      _channel[idx] = (_channel[idx] + 0.3).clamp(0.0, 1.0);
+    for (int i = 0; i < path.length; i++) {
+      final t = 1.0 - (i / path.length) * 0.5;
+      _channel[path[i]] = (_channel[path[i]] + 0.4 * t * flicker).clamp(0.0, 1.0);
     }
     return false;
   }

@@ -96,30 +96,34 @@ class RenderConfig {
     return (255 * m).toInt(); // 生セル
   });
 
-  // アーク放電用 (u: 0.0=背景, 0.2=電位場, 1.0=チャンネル, 2.0=フラッシュ)
+  // アーク放電用 (u: 0.0=背景, 0.1=電位場オーラ, 1.0=コア, 2.0=フラッシュ)
   static RenderConfig arc() => RenderConfig(pixel: (u, m, ch) {
     final v = u.clamp(0.0, 2.0);
     int r, g, b;
-    if (v < 0.2) {
-      // 電位場背景：暗青
-      final t = v / 0.2;
-      r = 0;
-      g = (t * 20).toInt();
-      b = (t * 60).toInt();
+    
+    if (v < 0.15) {
+      // 1. 電位場のオーラ (青紫のぼんやりした光)
+      final t = v / 0.15;
+      r = (t * 40).toInt();
+      g = (t * 10).toInt();
+      b = (t * 100).toInt();
     } else if (v < 1.0) {
-      // チャンネル：青→青白
-      final t = (v - 0.2) / 0.8;
-      r = (t * 100).toInt();
-      g = (t * 160).toInt();
+      // 2. チャンネルのグロー (青→白へのグラデーション)
+      final t = (v - 0.15) / 0.85;
+      r = (40 + t * 160).toInt();
+      g = (10 + t * 200).toInt();
       b = 255;
     } else {
-      // フラッシュ：白
+      // 3. コア・フラッシュ (純白)
       final t = (v - 1.0).clamp(0.0, 1.0);
-      r = (100 + t * 155).toInt().clamp(0, 255);
-      g = (160 + t * 95).toInt().clamp(0, 255);
+      r = (200 + t * 55).toInt();
+      g = (210 + t * 45).toInt();
       b = 255;
     }
-    return ([r, g, b][ch] * m).toInt().clamp(0, 255);
+    
+    // 最終出力 (RGBチャンネル選択)
+    final rgb = [r, g, b];
+    return (rgb[ch] * m).toInt().clamp(0, 255);
   });
 }
 
