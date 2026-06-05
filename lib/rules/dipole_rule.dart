@@ -50,6 +50,8 @@ class DipoleRule extends FieldRule {
   double damping = 0.999;
   double lightSpeed = 2.0;
 
+  Offset? _dragStart;
+
   @override
   String get name => "Dipole";
 
@@ -85,6 +87,14 @@ class DipoleRule extends FieldRule {
       getCurrentValue: () => view.index.toDouble(),
     ),
   ];
+
+  @override
+  void init(Grid grid) {
+    dipoles.clear();
+    grid.u.fillRange(0, grid.u.length, 0.0);
+    grid.uPrev.fillRange(0, grid.uPrev.length, 0.0);
+    _dragStart = null;
+  }
 
   @override
   void setParam(String key, double val) {
@@ -214,22 +224,23 @@ class DipoleRule extends FieldRule {
   }
 
   @override
-  void onTouchStart(Grid grid, Offset pos) {}
+  void onTouchStart(Grid grid, Offset pos) {
+    _dragStart = pos;
+  }
 
   @override
   void onTouchMove(Grid grid, Offset pos) {}
 
   @override
   void onTouchEnd(Grid grid, Offset pos) {
-    // Note: The logic previously used delta, but onTouchEnd only gets pos.
-    // For now, we'll spawn with random angle or use a stored start position if we want velocity.
-    // Let's keep it simple to match the signature.
+    final delta = _dragStart != null ? pos - _dragStart! : Offset.zero;
     dipoles.add(ElectricDipole(
       pos: pos,
-      vel: Offset.zero,
-      angle: math.Random().nextDouble() * math.pi * 2,
+      vel: delta * 0.5,
+      angle: math.atan2(delta.dy, delta.dx),
       angularVel: initialAngularVel,
       separation: separation,
     ));
+    _dragStart = null;
   }
 }
