@@ -9,10 +9,11 @@ import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
 import '../rules/arc_rule.dart';
 import '../rules/electric_rule.dart';
+import '../rules/dipole_rule.dart';
 
 enum PanelMode { closed, standard, full }
 
-const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz', 'life', 'arc', 'electric'];
+const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz', 'life', 'arc', 'electric', 'dipole'];
 
 class ControlPanel extends StatefulWidget {
   final GameController controller;
@@ -44,6 +45,7 @@ class _ControlPanelState extends State<ControlPanel> {
       case 'life': return LifeRule();
       case 'arc': return ArcRule();
       case 'electric': return ElectricRule();
+      case 'dipole': return DipoleRule();
       default: return WaveRule();
     }
   }
@@ -71,6 +73,7 @@ class _ControlPanelState extends State<ControlPanel> {
     if (r is LifeRule) return 'life';
     if (r is ArcRule) return 'arc';
     if (r is ElectricRule) return 'electric';
+    if (r is DipoleRule) return 'dipole';
     return 'wave';
   }
 
@@ -173,11 +176,16 @@ class _ControlPanelState extends State<ControlPanel> {
             // ── Dynamic Params (Full Only) ──
             ...params.where((p) => !(ruleName == 'gravity' && p.key == 'G')).map((p) {
               final isChargeParam = ruleName == 'electric' && p.key == 'charge';
+              final isDipoleView = ruleName == 'dipole' && p.key == 'view';
+              
               final chargeValue = isChargeParam ? (p.getCurrentValue?.call() ?? p.defaultValue).toInt() : 0;
               final chargeLabel = isChargeParam
                   ? (chargeValue == 0 ? 'Monopole' : (chargeValue > 0 ? '+$chargeValue' : '$chargeValue'))
                   : '';
               
+              final viewValue = isDipoleView ? (p.getCurrentValue?.call() ?? p.defaultValue).toInt() : 0;
+              final viewLabel = isDipoleView ? FieldView.values[viewValue].name.toUpperCase() : '';
+
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Column(
@@ -217,6 +225,18 @@ class _ControlPanelState extends State<ControlPanel> {
                           color: chargeValue == 0
                               ? Colors.white
                               : (chargeValue > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF)),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
+                    if (isDipoleView) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        viewLabel,
+                        style: const TextStyle(
+                          color: Color(0xFF00FFB2),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,

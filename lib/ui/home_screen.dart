@@ -8,6 +8,7 @@ import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
 import '../rules/arc_rule.dart';
 import '../rules/electric_rule.dart';
+import '../rules/dipole_rule.dart';
 import 'game_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -78,6 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _item(context, 'WAVE', isJa ? '波の伝播と干渉' : 'Wave propagation & interference', const Color(0xFF00C8FF), WaveRule(), Icons.waves_rounded),
               _item(context, 'GRAVITY', isJa ? '軌道力学・多体問題' : 'Orbital mechanics & N-body', const Color(0xFFFF3D6B), GravityRule(), Icons.public_rounded),
               _item(context, 'ELECTRIC', isJa ? 'クーロン力と対消滅' : 'Coulomb force & Annihilation', const Color(0xFF80C8FF), ElectricRule(), Icons.flash_on_rounded),
+              _item(context, 'DIPOLE', isJa ? '電気双極子と電磁場' : 'Dipole & Electromagnetic Field', const Color(0xFF00FFB2), DipoleRule(), Icons.settings_input_component_rounded),
               _item(context, 'HEAT', isJa ? '熱拡散とエントロピー' : 'Thermal diffusion & Entropy', const Color(0xFFFF8A00), HeatRule(), Icons.thermostat_rounded),
             ]),
             _section(isJa ? '化学・生物' : 'CHEMICAL & BIOLOGICAL', [
