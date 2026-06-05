@@ -59,10 +59,16 @@ class _GameScreenState extends State<GameScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 背景画像（アセットがない場合は単色）
-          Container(color: const Color(0xFF05050A)),
+          // Background Marble
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/white-marble1.jpg',
+              fit: BoxFit.cover,
+              opacity: const AlwaysStoppedAnimation(0.15),
+            ),
+          ),
           
-          // コンテンツ全体
+          // Content
           Positioned.fill(
             child: Column(
               children: [
@@ -71,9 +77,7 @@ class _GameScreenState extends State<GameScreen>
                   child: ControlPanel(
                     controller: _ctrl,
                     onRebuild: () => setState(() {}),
-                    onBack: () => Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                    ),
+                    onBack: () => Navigator.of(context).pop(),
                   ),
                 ),
                 Expanded(
@@ -100,6 +104,23 @@ class _GameScreenState extends State<GameScreen>
                   }),
                 ),
               ],
+            ),
+          ),
+          
+          // Floating Home Button
+          Positioned(
+            bottom: 24,
+            right: 24,
+            child: FloatingActionButton(
+              backgroundColor: const Color(0xFF1A1A2A),
+              foregroundColor: Colors.white70,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Icon(Icons.home_rounded),
             ),
           ),
         ],

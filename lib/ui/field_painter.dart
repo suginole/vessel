@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../game/game_controller.dart';
 import '../rules/field_rule.dart';
 import '../rules/gravity_rule.dart';
+import '../rules/electric_rule.dart';
 
 class FieldPainter extends CustomPainter {
   final GameController controller;
@@ -66,6 +67,27 @@ class FieldPainter extends CustomPainter {
     // ルール固有の描画
     if (controller.rule is GravityRule) {
       _drawGravity(canvas, size, controller.rule as GravityRule);
+    } else if (controller.rule is ElectricRule) {
+      _drawElectric(canvas, size, controller.rule as ElectricRule);
+    }
+  }
+
+  void _drawElectric(Canvas canvas, Size size, ElectricRule rule) {
+    final sx = size.width / kW;
+    final sy = size.height / kH;
+    final paint = Paint();
+
+    for (final b in rule.bodies) {
+      final pos = Offset(b.pos.dx * sx, b.pos.dy * sy);
+      final radius = (b.mass.abs() * 2.0 + 4.0).clamp(4.0, 20.0);
+      final color = b.mass > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF);
+      
+      // Outer Glow
+      canvas.drawCircle(pos, radius + 2, paint..color = color.withOpacity(0.3));
+      // Main Body
+      canvas.drawCircle(pos, radius, paint..color = color);
+      // Core
+      canvas.drawCircle(pos, radius * 0.4, paint..color = Colors.white);
     }
   }
 

@@ -21,6 +21,7 @@ class ElectricRule extends FieldRule {
     final absV = v.abs();
     
     // 対数スケールによる等高線
+    // absVを使用することで負の電位でも計算を安定させる
     final logV = log(1.0 + absV * 0.01);
     const levels = 8.0;
     final val = logV * levels;
@@ -30,17 +31,17 @@ class ElectricRule extends FieldRule {
     
     if (isContour) {
       if (v > 0) {
-        // 正電位：赤〜オレンジ（高輝度）
+        // 正電位：赤〜オレンジ
         final rgb = [(1.0 * 255 * m).toInt(), (0.3 * 255 * m).toInt(), (0.1 * 255 * m).toInt()];
         return rgb[ch].clamp(0, 255);
       } else {
-        // 負電位：青〜シアン（高輝度）
+        // 負電位：青〜シアン
         final rgb = [(0.1 * 255 * m).toInt(), (0.4 * 255 * m).toInt(), (1.0 * 255 * m).toInt()];
         return rgb[ch].clamp(0, 255);
       }
     }
     
-    // 背景に微かな電場オーラ（ポテンシャルに応じた発光）を表示
+    // 背景に微かな電場オーラ
     if (absV > 0.1) {
       final aura = (logV * 15 * m).toInt();
       if (v > 0) {
