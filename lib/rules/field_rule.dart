@@ -95,6 +95,29 @@ class RenderConfig {
     if (u < 0.5) return 0; // 死セル
     return (255 * m).toInt(); // 生セル
   });
+
+  // アーク放電用 (u: 電位, uPrev: 破壊状態)
+  static RenderConfig arc() => RenderConfig(pixel: (u, m, ch) {
+    // 電位場 (u: -1.0 ~ 1.0) の可視化
+    // +1.0: 白・黄, 0.0: 黒, -1.0: 青・紺
+    final phi = u.clamp(-1.0, 1.0);
+    int r, g, b;
+    if (phi > 0) {
+      r = (phi * 255).toInt();
+      g = (phi * 200).toInt();
+      b = (phi * 100).toInt();
+    } else {
+      r = 0;
+      g = (phi.abs() * 50).toInt();
+      b = (phi.abs() * 150).toInt();
+    }
+
+    // 破壊済みセルの光 (uPrevに破壊状態が入っている想定)
+    // 今回は u のみ渡されるため、FieldRule側で合成して渡す必要がある
+    // ここでは u の正負と絶対値で簡易的に表現する
+    final rgb = [r, g, b];
+    return (rgb[ch] * m).toInt().clamp(0, 255);
+  });
 }
 
 // ─────────────────────────────────────────
