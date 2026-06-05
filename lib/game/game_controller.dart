@@ -7,6 +7,7 @@ import '../rules/gravity_rule.dart';
 import '../rules/heat_rule.dart';
 import '../rules/gray_scott_rule.dart';
 import '../rules/bz_rule.dart';
+import '../rules/life_rule.dart';
 
 const int kW = 256;
 const int kH = 256;
@@ -29,6 +30,7 @@ class GameController {
     'heat'    : () => HeatRule(),
     'gray-scott': () => GrayScottRule(),
     'bz': () => BZRule(),
+    'life': () => LifeRule(),
   };
 
   void restart(int vertexCount, FieldRule newRule) {

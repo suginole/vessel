@@ -53,6 +53,13 @@ class GrayScottRule extends FieldRule {
 
   @override
   void step(Grid grid, double dt) {
+    // 3倍速化のために1フレーム内で3回計算を回す
+    for (int iter = 0; iter < 3; iter++) {
+      _singleStep(grid);
+    }
+  }
+
+  void _singleStep(Grid grid) {
     final w = grid.w;
     final h = grid.h;
     final u = grid.u;
@@ -62,7 +69,7 @@ class GrayScottRule extends FieldRule {
     final nextU = Float32List(w * h);
     final nextV = Float32List(w * h);
 
-    // Gray-Scott標準: dt=1.0固定、1フレーム1ステップ
+    // Gray-Scott標準: dt=1.0固定
     const double fixedDt = 1.0;
 
     for (int y = 1; y < h - 1; y++) {

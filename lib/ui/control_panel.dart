@@ -6,9 +6,10 @@ import '../rules/gravity_rule.dart';
 import '../rules/heat_rule.dart';
 import '../rules/gray_scott_rule.dart';
 import '../rules/bz_rule.dart';
+import '../rules/life_rule.dart';
 
 // 利用可能なルール一覧
-const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz'];
+const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz', 'life'];
 
 class ControlPanel extends StatefulWidget {
   final GameController controller;
@@ -35,6 +36,7 @@ class _ControlPanelState extends State<ControlPanel> {
       case 'heat':    return HeatRule();
       case 'gray-scott': return GrayScottRule();
       case 'bz': return BZRule();
+      case 'life': return LifeRule();
       default:        return WaveRule();
     }
   }

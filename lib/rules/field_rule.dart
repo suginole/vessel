@@ -89,6 +89,12 @@ class RenderConfig {
     final rgb = [r, g, b];
     return (rgb[ch] * m).toInt().clamp(0, 255);
   });
+
+  // ライフゲーム用 (生セル=白, 死セル=透明)
+  static RenderConfig life() => RenderConfig(pixel: (u, m, ch) {
+    if (u < 0.5) return 0; // 死セル
+    return (255 * m).toInt(); // 生セル
+  });
 }
 
 // ─────────────────────────────────────────
