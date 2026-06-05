@@ -75,7 +75,7 @@ class _GameScreenState extends State<GameScreen>
                   bottom: false,
                   child: ControlPanel(
                     controller: _ctrl,
-                    onRebuild: () => setState(() => _img = null), // キャッシュをリフレッシュ
+                    onRebuild: () => setState(() {}), // UIを再構築するが、画像をクリアしない
                     onBack: () => Navigator.of(context).pop(),
                   ),
                 ),
