@@ -139,7 +139,28 @@ class FieldPainter extends CustomPainter {
     final sy = size.height / kH;
     final paint = Paint();
     
-    // 1. 結合線の描画
+    // 1. ドラッグ中のプレビュー矢印
+    if (rule.dragStart != null && rule.dragCurrent != null) {
+      final p1 = Offset(rule.dragStart!.dx * sx, rule.dragStart!.dy * sy);
+      final p2 = Offset(rule.dragCurrent!.dx * sx, rule.dragCurrent!.dy * sy);
+      
+      // 矢印の線
+      canvas.drawLine(
+        p1, p2,
+        paint..color = Colors.white.withValues(alpha: 0.5)..strokeWidth = 2.0,
+      );
+      
+      // 先端の仮双極子プレビュー
+      final angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx);
+      final sep = rule.separation * sx;
+      final posPlus = p1 + Offset(math.cos(angle), math.sin(angle)) * (sep * 0.5);
+      final posMinus = p1 - Offset(math.cos(angle), math.sin(angle)) * (sep * 0.5);
+      
+      canvas.drawCircle(posPlus, 4.0, paint..color = const Color(0xFFFF3D6B).withValues(alpha: 0.5));
+      canvas.drawCircle(posMinus, 4.0, paint..color = const Color(0xFF00C8FF).withValues(alpha: 0.5));
+    }
+
+    // 2. 結合線の描画
     for (final b in rule.bonds) {
       final dA = rule.dipoles[b.idA];
       final dB = rule.dipoles[b.idB];
@@ -150,7 +171,7 @@ class FieldPainter extends CustomPainter {
       );
     }
 
-    // 2. フィールドラインの描画 (Radiationモードのみ)
+    // 3. フィールドラインの描画 (Radiationモードのみ)
     if (rule.visualizationMode == 2 && rule.fieldLines != null) {
       for (final line in rule.fieldLines!) {
         for (int i = 0; i < line.length - 1; i++) {
@@ -165,7 +186,7 @@ class FieldPainter extends CustomPainter {
       }
     }
     
-    // 3. 双極子の描画
+    // 4. 双極子の描画
     for (final d in rule.dipoles) {
       final pos = Offset(d.pos.dx * sx, d.pos.dy * sy);
       final momentDir = Offset(math.cos(d.angle), math.sin(d.angle));

@@ -30,6 +30,10 @@ class ElectricDipole {
   }
 
   Offset get moment => Offset(math.cos(angle), math.sin(angle)) * separation;
+  
+  // 正負電荷の座標
+  Offset get posPlus  => pos + Offset(math.cos(angle), math.sin(angle)) * (separation * 0.5);
+  Offset get posMinus => pos - Offset(math.cos(angle), math.sin(angle)) * (separation * 0.5);
 
   void update(double dt, double damping) {
     pos += vel * dt;
@@ -61,6 +65,9 @@ class DipoleRule extends FieldRule {
 
   Offset? _dragStart;
   Offset? _dragCurrent;
+  Offset? get dragStart => _dragStart;
+  Offset? get dragCurrent => _dragCurrent;
+
   List<List<Offset>>? _fieldLines;
   List<List<Offset>>? get fieldLines => _fieldLines;
 
@@ -134,8 +141,8 @@ class DipoleRule extends FieldRule {
       _reflectAtBoundary(d, grid);
     }
 
-    // 4. Binding logic
-    _updateBonds(dt);
+    // 4. Annihilation & Binding logic
+    _updateInteractions(grid, dt);
 
     // 5. Visualization: Write to grid
     _writeToGrid(grid);
@@ -160,7 +167,7 @@ class DipoleRule extends FieldRule {
       for (int x = 1; x < w - 1; x++) {
         final i = y * w + x;
         final lap = u[i+1] + u[i-1] + u[i+w] + u[i-w] - 4 * u[i];
-        next[i] = (2 * u[i] - uPrev[i] + c2 * lap) * 0.99; // わずかに減衰
+        next[i] = (2 * u[i] - uPrev[i] + c2 * lap) * 0.98; // 減衰を少し強める
       }
     }
     
@@ -169,7 +176,7 @@ class DipoleRule extends FieldRule {
       final pDotDot = (d.moment - d.pPrev * 2.0 + d.pPrev2);
       final idx = d.pos.dy.toInt() * w + d.pos.dx.toInt();
       if (idx >= 0 && idx < u.length) {
-        next[idx] += pDotDot.distance * 5.0;
+        next[idx] += pDotDot.distance * 10.0;
       }
     }
 
@@ -177,7 +184,48 @@ class DipoleRule extends FieldRule {
     u.setAll(0, next);
   }
 
-  void _updateBonds(double dt) {
+  void _updateInteractions(Grid grid, double dt) {
+    final toRemove = <int>{};
+    const annihilationRadius = 3.0;
+    const annihilationEnergy = 50.0;
+
+    // 1. 対消滅判定 (Annihilation)
+    for (int i = 0; i < dipoles.length; i++) {
+      for (int j = 0; j < dipoles.length; j++) {
+        if (i == j) continue;
+        
+        // Aの正電荷とBの負電荷の接触
+        final dist = (dipoles[i].posPlus - dipoles[j].posMinus).distance;
+        if (dist < annihilationRadius) {
+          toRemove.add(i);
+          toRemove.add(j);
+          
+          // パルス注入
+          final contactPos = (dipoles[i].posPlus + dipoles[j].posMinus) * 0.5;
+          final idx = contactPos.dy.toInt() * grid.w + contactPos.dx.toInt();
+          if (idx >= 0 && idx < grid.u.length) {
+            grid.u[idx] += annihilationEnergy;
+          }
+        }
+      }
+    }
+
+    // 削除処理
+    if (toRemove.isNotEmpty) {
+      final sortedIndices = toRemove.toList()..sort((a, b) => b.compareTo(a));
+      for (final idx in sortedIndices) {
+        dipoles.removeAt(idx);
+        // 関連する結合も削除
+        bonds.removeWhere((b) => b.idA == idx || b.idB == idx);
+        // 残った結合のインデックス調整
+        for (final b in bonds) {
+          if (b.idA > idx) b.idA--;
+          if (b.idB > idx) b.idB--;
+        }
+      }
+    }
+
+    // 2. 結合ロジック (Binding)
     // 既存の結合の維持（バネ的な拘束）
     for (final b in bonds) {
       final dA = dipoles[b.idA];
