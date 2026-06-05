@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+// import 'package:audioplayers/audioplayers.dart'; // Webビルドエラー回避のため一時コメントアウト
 import '../rules/field_rule.dart';
 import '../rules/wave_rule.dart';
 import '../rules/gravity_rule.dart';
@@ -12,7 +12,7 @@ import '../rules/electric_rule.dart';
 import 'game_screen.dart';
 
 // Global Audio Player for persistent BGM
-final AudioPlayer _bgmPlayer = AudioPlayer();
+// final AudioPlayer _bgmPlayer = AudioPlayer();
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,14 +25,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _startBgm();
+    // _startBgm();
   }
 
-  Future<void> _startBgm() async {
-    await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    await _bgmPlayer.play(AssetSource('audio/piano_loop.mp3'));
-    await _bgmPlayer.setVolume(0.4);
-  }
+  // Future<void> _startBgm() async {
+  //   await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
+  //   await _bgmPlayer.play(AssetSource('audio/piano_loop.mp3'));
+  //   await _bgmPlayer.setVolume(0.4);
+  // }
 
   void _launch(BuildContext context, FieldRule rule) {
     Navigator.of(context).push(
@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.w900,
                         letterSpacing: 8,
                         shadows: [
-                          Shadow(color: Colors.cyanAccent.withOpacity(0.5), blurRadius: 20),
+                          Shadow(color: Colors.cyanAccent.withValues(alpha: 0.5), blurRadius: 20),
                         ],
                       ),
                     ),
@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'MULTIMODAL PHYSICS SIMULATOR',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                         fontSize: 12,
                         letterSpacing: 4,
                       ),
@@ -121,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 title,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   fontSize: 10,
                   letterSpacing: 2,
                   fontWeight: FontWeight.bold,
@@ -149,9 +149,9 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF1A1A2A),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 1),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.05), blurRadius: 10, spreadRadius: 2),
+            BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 10, spreadRadius: 2),
           ],
         ),
         child: Column(
@@ -166,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text(
               desc,
-              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 9, height: 1.2),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9, height: 1.2),
             ),
           ],
         ),

@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../game/game_controller.dart';
-import '../rules/field_rule.dart';
 import '../rules/gravity_rule.dart';
 import '../rules/electric_rule.dart';
 
@@ -27,7 +26,7 @@ class FieldPainter extends CustomPainter {
 
     // 境界線の描画（ジャギーを隠すために少し太めで滑らかな線を重ねる）
     final boundaryPaint = Paint()
-      ..color = Colors.white.withOpacity(0.4)
+      ..color = Colors.white.withValues(alpha: 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0 // 少し太く
       ..strokeJoin = StrokeJoin.round
@@ -53,13 +52,13 @@ class FieldPainter extends CustomPainter {
         canvas.drawCircle(
           pos,
           8.0,
-          Paint()..color = Colors.white.withOpacity(0.1),
+          Paint()..color = Colors.white.withValues(alpha: 0.1),
         );
         // 中心
         canvas.drawCircle(
           pos,
           5.0,
-          Paint()..color = Colors.white.withOpacity(0.6),
+          Paint()..color = Colors.white.withValues(alpha: 0.6),
         );
       }
     }
@@ -79,11 +78,11 @@ class FieldPainter extends CustomPainter {
 
     for (final b in rule.bodies) {
       final pos = Offset(b.pos.dx * sx, b.pos.dy * sy);
-      final radius = (b.mass.abs() * 2.0 + 4.0).clamp(4.0, 20.0);
-      final color = b.mass > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF);
+      final radius = (b.charge.abs() * 2.0 + 4.0).clamp(4.0, 20.0);
+      final color = b.charge > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF);
       
       // Outer Glow
-      canvas.drawCircle(pos, radius + 2, paint..color = color.withOpacity(0.3));
+      canvas.drawCircle(pos, radius + 2, paint..color = color.withValues(alpha: 0.3));
       // Main Body
       canvas.drawCircle(pos, radius, paint..color = color);
       // Core
@@ -97,7 +96,7 @@ class FieldPainter extends CustomPainter {
 
     // 軌跡
     final trailPaint = Paint()
-      ..color = Colors.greenAccent.withOpacity(0.3)
+      ..color = Colors.greenAccent.withValues(alpha: 0.3)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
     for (int i = 0; i < rule.trails.length; i++) {
@@ -110,7 +109,7 @@ class FieldPainter extends CustomPainter {
       final b = rule.bodies[i];
       final c = Offset(b.pos.dx * sx, b.pos.dy * sy);
       final r = (b.mass * 4.0 + 4.0).clamp(4.0, 40.0);
-      canvas.drawCircle(c, r + 2, Paint()..color = Colors.white.withOpacity(0.2));
+      canvas.drawCircle(c, r + 2, Paint()..color = Colors.white.withValues(alpha: 0.2));
       canvas.drawCircle(
         c,
         r,
@@ -133,13 +132,13 @@ class FieldPainter extends CustomPainter {
         (p.pos.dy + p.vel.dy * arrowScale) * sy,
       );
       
-      canvas.drawCircle(c, 8, Paint()..color = Colors.white.withOpacity(0.6));
-      canvas.drawLine(c, tip, Paint()..color = Colors.white.withOpacity(0.8)..strokeWidth = 2.0);
+      canvas.drawCircle(c, 8, Paint()..color = Colors.white.withValues(alpha: 0.6));
+      canvas.drawLine(c, tip, Paint()..color = Colors.white.withValues(alpha: 0.8)..strokeWidth = 2.0);
       canvas.drawCircle(tip, 3, Paint()..color = Colors.white);
       canvas.drawLine(
         tip,
         Offset((p.pos.dx + p.vel.dx * arrowScale * 2) * sx, (p.pos.dy + p.vel.dy * arrowScale * 2) * sy),
-        Paint()..color = Colors.white.withOpacity(0.2)..strokeWidth = 1.0..style = PaintingStyle.stroke,
+        Paint()..color = Colors.white.withValues(alpha: 0.2)..strokeWidth = 1.0..style = PaintingStyle.stroke,
       );
     }
   }

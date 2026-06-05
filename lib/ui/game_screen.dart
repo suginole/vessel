@@ -5,7 +5,6 @@ import '../game/game_controller.dart';
 import '../rules/field_rule.dart';
 import 'field_painter.dart';
 import 'control_panel.dart';
-import 'home_screen.dart';
 
 class GameScreen extends StatefulWidget {
   final FieldRule? initialRule;
@@ -117,7 +116,7 @@ class _GameScreenState extends State<GameScreen>
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               ),
               onPressed: () => Navigator.of(context).pop(),
               child: const Icon(Icons.home_rounded),

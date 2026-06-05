@@ -106,7 +106,7 @@ class _ControlPanelState extends State<ControlPanel> {
                 _IconBtn(
                   icon: Icons.arrow_back,
                   onTap: widget.onBack!,
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.6),
                   size: 32,
                 ),
                 const SizedBox(width: 12),
@@ -226,7 +226,7 @@ class _ControlPanelState extends State<ControlPanel> {
         activeTrackColor: activeColor,
         inactiveTrackColor: const Color(0xFF1A2A3A),
         thumbColor: activeColor,
-        overlayColor: activeColor.withOpacity(0.2),
+        overlayColor: activeColor.withValues(alpha: 0.2),
         trackHeight: 2,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
       ),
@@ -306,9 +306,9 @@ class _IconBtn extends StatelessWidget {
       child: Container(
         width: size, height: size,
         decoration: BoxDecoration(
-          border: Border.all(color: color.withOpacity(0.5)),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
           borderRadius: BorderRadius.circular(8),
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
         ),
         child: Icon(icon, color: color, size: size * 0.5),
       ),
