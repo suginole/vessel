@@ -8,6 +8,7 @@ import '../rules/gray_scott_rule.dart';
 import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
 import '../rules/arc_rule.dart';
+import '../rules/electric_rule.dart';
 
 enum PanelMode { closed, standard, full }
 

@@ -6,8 +6,8 @@ import '../rules/heat_rule.dart';
 import '../rules/gray_scott_rule.dart';
 import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
-import 'arc_rule.dart';
-import 'electric_rule.dart';
+import '../rules/arc_rule.dart';
+import '../rules/electric_rule.dart';
 import 'game_screen.dart';
 
 class HomeScreen extends StatelessWidget {

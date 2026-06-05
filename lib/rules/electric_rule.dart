@@ -20,25 +20,38 @@ class ElectricRule extends FieldRule {
     final v = u;
     final absV = v.abs();
     
-    // 対数スケール
+    // 対数スケールによる等高線
     final logV = log(1.0 + absV * 0.01);
     const levels = 8.0;
     final val = logV * levels;
     final frac = val - val.floor();
     
-    final isContour = frac < 0.1 && logV > 0.001;
+    final isContour = frac < 0.12 && logV > 0.001;
     
     if (isContour) {
       if (v > 0) {
-        // 正電位：赤〜オレンジ
-        final rgb = [(1.0 * 255 * m).toInt(), (0.4 * 255 * m).toInt(), 0];
+        // 正電位：赤〜オレンジ（高輝度）
+        final rgb = [(1.0 * 255 * m).toInt(), (0.3 * 255 * m).toInt(), (0.1 * 255 * m).toInt()];
         return rgb[ch].clamp(0, 255);
       } else {
-        // 負電位：青〜シアン
-        final rgb = [0, (0.6 * 255 * m).toInt(), (1.0 * 255 * m).toInt()];
+        // 負電位：青〜シアン（高輝度）
+        final rgb = [(0.1 * 255 * m).toInt(), (0.4 * 255 * m).toInt(), (1.0 * 255 * m).toInt()];
         return rgb[ch].clamp(0, 255);
       }
     }
+    
+    // 背景に微かな電場オーラ（ポテンシャルに応じた発光）を表示
+    if (absV > 0.1) {
+      final aura = (logV * 15 * m).toInt();
+      if (v > 0) {
+        final rgb = [aura, (aura * 0.2).toInt(), 0];
+        return rgb[ch].clamp(0, 255);
+      } else {
+        final rgb = [0, (aura * 0.3).toInt(), aura];
+        return rgb[ch].clamp(0, 255);
+      }
+    }
+    
     return 0;
   });
 
