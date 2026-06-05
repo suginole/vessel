@@ -8,7 +8,7 @@ class BZRule extends FieldRule {
   String get name => 'bz';
 
   @override
-  RenderConfig get renderConfig => RenderConfig.blueRed(); // 活性変数uを可視化
+  RenderConfig get renderConfig => RenderConfig.bz(); // 活性変数uを可視化
 
   @override
   List<RuleParam> get params => [
@@ -65,11 +65,11 @@ class BZRule extends FieldRule {
         // ∂u/∂t = Du∇²u + u - u³/3 - v + I
         // ∂v/∂t = ε(u - γv + β)
         
-        final du_dt = du * lu + (u[i] - (u[i] * u[i] * u[i]) / 3.0 - v[i] + 0.5);
-        final dv_dt = epsilon * (u[i] - gamma * v[i] + beta);
+        final duDt = du * lu + (u[i] - (u[i] * u[i] * u[i]) / 3.0 - v[i] + 0.5);
+        final dvDt = dv * lv + epsilon * (u[i] - gamma * v[i] + beta); // lvを使用して拡散を追加
 
-        nextU[i] = u[i] + du_dt * 0.5; // タイムステップ調整
-        nextV[i] = v[i] + dv_dt * 0.5;
+        nextU[i] = u[i] + duDt * 0.5; // タイムステップ調整
+        nextV[i] = v[i] + dvDt * 0.5;
         
         nextU[i] = nextU[i].clamp(-2.0, 2.0);
         nextV[i] = nextV[i].clamp(-2.0, 2.0);

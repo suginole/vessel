@@ -54,6 +54,21 @@ class RenderConfig {
     return (rgb[ch] * m).toInt().clamp(0, 255);
   });
 
+  // BZ反応用：マゼンタ（高活性）〜紫〜黒（抑制）
+  static RenderConfig bz() => RenderConfig(pixel: (u, m, ch) {
+    // uは通常 -2.0 ~ 2.0 程度
+    final v = ((u + 1.0) / 3.0).clamp(0.0, 1.0);
+    int r, g, b;
+    
+    // マゼンタ系のグラデーション
+    r = (v * 255).toInt();
+    g = (v * 50).toInt();
+    b = (v * 200 + (1.0 - v) * 50).toInt();
+    
+    final rgb = [r, g, b];
+    return (rgb[ch] * m).toInt().clamp(0, 255);
+  });
+
   // 重力ポテンシャル等高線
   static RenderConfig gravity() => RenderConfig(pixel: (u, m, ch) {
     final v = (-u).clamp(0.0, 1.0);
