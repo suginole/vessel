@@ -30,20 +30,26 @@ class RenderConfig {
   final int Function(double u, double mask, int channel) pixel;
   const RenderConfig({required this.pixel});
 
-  // 赤-白-青（Wave用）
-  static RenderConfig blueRed() => RenderConfig(pixel: (u, m, ch) {
+  // 水面（Wave用）：深青（谷）〜シアン（平坦）〜白（山）
+  static RenderConfig water() => RenderConfig(pixel: (u, m, ch) {
     final v = (u / 3.0).clamp(-1.0, 1.0);
     int r, g, b;
+    
     if (v >= 0) {
-      r = (255 * (1.0 - v)).toInt().clamp(0, 255);
-      g = (255 * (1.0 - v)).toInt().clamp(0, 255);
+      // 山（正の変位）：シアンから白へ
+      // v=0: (0, 180, 255) -> v=1: (255, 255, 255)
+      r = (v * 255).toInt();
+      g = (180 + v * 75).toInt();
       b = 255;
     } else {
+      // 谷（負の変位）：シアンから深青へ
+      // v=0: (0, 180, 255) -> v=-1: (0, 20, 80)
       final t = -v;
-      r = 255;
-      g = (255 * (1.0 - t)).toInt().clamp(0, 255);
-      b = (255 * (1.0 - t)).toInt().clamp(0, 255);
+      r = 0;
+      g = (180 * (1.0 - t) + 20 * t).toInt();
+      b = (255 * (1.0 - t) + 80 * t).toInt();
     }
+    
     final rgb = [r, g, b];
     return (rgb[ch] * m).toInt().clamp(0, 255);
   });

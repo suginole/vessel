@@ -89,18 +89,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             _section('CLASSICAL PHYSICS', [
-              _item(context, 'WAVE', 'Wave propagation & interference', const Color(0xFF00C8FF), WaveRule()),
-              _item(context, 'GRAVITY', 'Orbital mechanics & N-body', const Color(0xFFFF3D6B), GravityRule()),
-              _item(context, 'ELECTRIC', 'Coulomb force & Annihilation', const Color(0xFF80C8FF), ElectricRule()),
-              _item(context, 'HEAT', 'Thermal diffusion & Entropy', const Color(0xFFFF8A00), HeatRule()),
+              _item(context, 'WAVE', 'Wave propagation & interference', const Color(0xFF00C8FF), WaveRule(), Icons.waves_rounded),
+              _item(context, 'GRAVITY', 'Orbital mechanics & N-body', const Color(0xFFFF3D6B), GravityRule(), Icons.public_rounded),
+              _item(context, 'ELECTRIC', 'Coulomb force & Annihilation', const Color(0xFF80C8FF), ElectricRule(), Icons.flash_on_rounded),
+              _item(context, 'HEAT', 'Thermal diffusion & Entropy', const Color(0xFFFF8A00), HeatRule(), Icons.thermostat_rounded),
             ]),
             _section('CHEMICAL & BIOLOGICAL', [
-              _item(context, 'GRAY-SCOTT', 'Reaction-diffusion patterns', const Color(0xFF00FFB2), GrayScottRule()),
-              _item(context, 'BZ REACTION', 'Oscillatory wave patterns', const Color(0xFFFF00F5), BZRule()),
+              _item(context, 'GRAY-SCOTT', 'Reaction-diffusion patterns', const Color(0xFF00FFB2), GrayScottRule(), Icons.biotech_rounded),
+              _item(context, 'BZ REACTION', 'Oscillatory wave patterns', const Color(0xFFFF00F5), BZRule(), Icons.opacity_rounded),
             ]),
             _section('DISCRETE SYSTEMS', [
-              _item(context, 'LIFE', "Conway's Game of Life", const Color(0xFFFFFFFF), LifeRule()),
-              _item(context, 'ARC', 'Dielectric breakdown model', const Color(0xFF7000FF), ArcRule()),
+              _item(context, 'LIFE', "Conway's Game of Life", const Color(0xFFFFFFFF), LifeRule(), Icons.grid_view_rounded),
+              _item(context, 'ARC', 'Dielectric breakdown model', const Color(0xFF7000FF), ArcRule(), Icons.electric_bolt_rounded),
             ]),
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
           ],
@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _item(BuildContext context, String name, String desc, Color color, FieldRule rule) {
+  Widget _item(BuildContext context, String name, String desc, Color color, FieldRule rule, IconData icon) {
     return GestureDetector(
       onTap: () => _launch(context, rule),
       child: Container(
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.science_outlined, color: color, size: 24),
+            Icon(icon, color: color, size: 24),
             const Spacer(),
             Text(
               name,

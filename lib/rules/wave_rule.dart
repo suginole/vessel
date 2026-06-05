@@ -8,7 +8,7 @@ class WaveRule extends FieldRule {
   String get name => 'wave';
 
   @override
-  RenderConfig get renderConfig => RenderConfig.blueRed();
+  RenderConfig get renderConfig => RenderConfig.water();
 
   @override
   void onTouchStart(Grid grid, Offset p) => onPoint(grid, p);

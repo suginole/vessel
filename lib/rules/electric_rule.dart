@@ -59,7 +59,7 @@ class ElectricRule extends FieldRule {
   @override
   List<RuleParam> get params => [
     RuleParam(key: 'K', label: 'Coulomb K', min: 0.00002, max: 0.01, defaultValue: 0.001, getCurrentValue: () => kConstant),
-    RuleParam(key: 'charge', label: 'Charge', min: -5.0, max: 5.0, defaultValue: 1.0, getCurrentValue: () => currentCharge),
+    RuleParam(key: 'charge', label: 'Charge', min: -5.0, max: 5.0, defaultValue: 1.0, divisions: 10, getCurrentValue: () => currentCharge),
   ];
 
   double kConstant = 0.001;
@@ -83,7 +83,7 @@ class ElectricRule extends FieldRule {
   @override
   void setParam(String key, double value) {
     if (key == 'K') kConstant = value;
-    if (key == 'charge') currentCharge = value;
+    if (key == 'charge') currentCharge = value.roundToDouble(); // 離散値（整数）として扱う
   }
 
   @override
@@ -122,9 +122,19 @@ class ElectricRule extends FieldRule {
   void _integrate(double dtC, double dtD, List<double> mask, int w, int h) {
     for (var b in bodies) {
       b.pos += b.vel * dtC;
-      if (b.pos.dx < 0 || b.pos.dx >= w || b.pos.dy < 0 || b.pos.dy >= h || mask[b.pos.dy.toInt() * w + b.pos.dx.toInt()] == 0) {
-        if (b.pos.dx < 0 || b.pos.dx >= w) b.vel = Offset(-b.vel.dx, b.vel.dy);
-        if (b.pos.dy < 0 || b.pos.dy >= h) b.vel = Offset(b.vel.dx, -b.vel.dy);
+      
+      // 完全弾性反射（境界での法線反射を近似）
+      final ix = b.pos.dx.toInt();
+      final iy = b.pos.dy.toInt();
+      if (ix < 0 || ix >= w || iy < 0 || iy >= h || mask[iy * w + ix] == 0) {
+        // 簡易的な法線反射：x/y軸に平行な境界と仮定して反転
+        if (b.pos.dx < 0 || b.pos.dx >= w || (iy >= 0 && iy < h && ix >= 0 && ix < w && mask[iy * w + (b.pos.dx < ix ? ix+1 : ix-1)] == 0)) {
+          b.vel = Offset(-b.vel.dx, b.vel.dy);
+        }
+        if (b.pos.dy < 0 || b.pos.dy >= h || (ix >= 0 && ix < w && iy >= 0 && iy < h && mask[(b.pos.dy < iy ? iy+1 : iy-1) * w + ix] == 0)) {
+          b.vel = Offset(b.vel.dx, -b.vel.dy);
+        }
+        // 境界内に押し戻す
         b.pos = Offset(b.pos.dx.clamp(0.1, w - 1.1), b.pos.dy.clamp(0.1, h - 1.1));
       }
     }
