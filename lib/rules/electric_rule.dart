@@ -28,39 +28,7 @@ class ElectricRule extends FieldRule {
   String get name => 'electric';
 
   @override
-  RenderConfig get renderConfig => RenderConfig(pixel: (u, m, ch) {
-    final v = u;
-    final absV = v.abs();
-    final logV = log(1.0 + absV * 0.01);
-    const levels = 8.0;
-    final val = logV * levels;
-    final frac = val - val.floor();
-    
-    final isContour = frac < 0.12 && logV > 0.001;
-    
-    if (isContour) {
-      if (v > 0) {
-        final rgb = [(1.0 * 255 * m).toInt(), (0.3 * 255 * m).toInt(), (0.1 * 255 * m).toInt()];
-        return rgb[ch].clamp(0, 255);
-      } else {
-        final rgb = [(0.1 * 255 * m).toInt(), (0.4 * 255 * m).toInt(), (1.0 * 255 * m).toInt()];
-        return rgb[ch].clamp(0, 255);
-      }
-    }
-    
-    if (absV > 0.1) {
-      final aura = (logV * 15 * m).toInt();
-      if (v > 0) {
-        final rgb = [aura, (aura * 0.2).toInt(), 0];
-        return rgb[ch].clamp(0, 255);
-      } else {
-        final rgb = [0, (aura * 0.3).toInt(), aura];
-        return rgb[ch].clamp(0, 255);
-      }
-    }
-    
-    return 0;
-  });
+  RenderConfig get renderConfig => RenderConfig.electric();
 
   @override
   List<RuleParam> get params => [
