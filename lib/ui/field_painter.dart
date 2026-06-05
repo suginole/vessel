@@ -228,76 +228,9 @@ class FieldPainter extends CustomPainter {
   }
 
   void _drawArc(Canvas canvas, Size size, ArcRule rule) {
-    final sx = size.width / kW;
-    final sy = size.height / kH;
-    final grid = controller.grid;
-    final w = grid.w;
-    final h = grid.h;
-    final mask = grid.mask;
-    
-    // グロー効果用のペイント（半透明シアン）
-    final glowPaint = Paint()
-      ..color = const Color(0x4000FFFF)  // 半透明シアン
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    
-    // メイン放電パス用のペイント（白）
-    final boltPaint = Paint()
-      ..color = const Color(0xFFFFFFFF)  // 白
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    
-    // グリッドを走査して放電経路を抽出
-    final glowPath = ui.Path();
-    final boltPath = ui.Path();
-    bool glowStarted = false;
-    bool boltStarted = false;
-    
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        final i = y * w + x;
-        if (mask[i] == 0.0) continue;
-        
-        final u = grid.u[i];
-        final px = x * sx;
-        final py = y * sy;
-        
-        // 放電が通った場所（grid.u > 0.05）
-        if (u > 0.05) {
-          // グロー（弱い放電）
-          if (u < 0.5) {
-            if (!glowStarted) {
-              glowPath.moveTo(px, py);
-              glowStarted = true;
-            } else {
-              glowPath.lineTo(px, py);
-            }
-          }
-          
-          // メイン放電（強い放電）
-          if (u > 0.3) {
-            if (!boltStarted) {
-              boltPath.moveTo(px, py);
-              boltStarted = true;
-            } else {
-              boltPath.lineTo(px, py);
-            }
-          }
-        }
-      }
-    }
-    
-    // グロー効果を先に描画
-    if (glowStarted) {
-      canvas.drawPath(glowPath, glowPaint);
-    }
-    
-    // メイン放電を描画
-    if (boltStarted) {
-      canvas.drawPath(boltPath, boltPaint);
-    }
+    // 直線的なグリッチに見える「白い線」のエフェクトを完全に中止。
+    // 描画は RenderConfig 側のピクセルシェーダー（gridToImage）に任せ、
+    // Painter 側では追加のパス描画を行わない。
   }
 
   void _drawBoundary(Canvas canvas, Size size, List<Offset> vertices) {
