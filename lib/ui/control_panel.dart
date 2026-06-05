@@ -9,17 +9,20 @@ import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
 import '../rules/arc_rule.dart';
 
-// 利用可能なルール一覧
+enum PanelMode { closed, standard, full }
+
 const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz', 'life', 'arc'];
 
 class ControlPanel extends StatefulWidget {
   final GameController controller;
   final VoidCallback onRebuild;
+  final VoidCallback? onBack;
 
   const ControlPanel({
     super.key,
     required this.controller,
     required this.onRebuild,
+    this.onBack,
   });
 
   @override
@@ -27,27 +30,27 @@ class ControlPanel extends StatefulWidget {
 }
 
 class _ControlPanelState extends State<ControlPanel> {
-  int    _n         = 6;
-  String _selected  = 'wave';
+  int _n = 6;
+  PanelMode _mode = PanelMode.standard;
 
-  FieldRule _buildRule() {
-    switch (_selected) {
-      case 'wave':    return WaveRule();
+  FieldRule _buildRule(String name) {
+    switch (name) {
+      case 'wave': return WaveRule();
       case 'gravity': return GravityRule();
-      case 'heat':    return HeatRule();
+      case 'heat': return HeatRule();
       case 'gray-scott': return GrayScottRule();
       case 'bz': return BZRule();
       case 'life': return LifeRule();
       case 'arc': return ArcRule();
-      default:        return WaveRule();
+      default: return WaveRule();
     }
   }
 
-  void _restart() {
-    final rule = _buildRule();
+  void _restart([String? ruleName]) {
+    final name = ruleName ?? _currentRuleName();
+    final rule = _buildRule(name);
     widget.controller.restart(_n, rule);
     
-    // N (3~16) を G (0.00002~0.01) に線形マッピング
     if (rule is GravityRule) {
       final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
       widget.controller.setParam('G', newG);
@@ -56,56 +59,97 @@ class _ControlPanelState extends State<ControlPanel> {
     widget.onRebuild();
   }
 
-  void _clean() {
-    widget.controller.clean();
-    widget.onRebuild();
+  String _currentRuleName() {
+    final r = widget.controller.rule;
+    if (r is WaveRule) return 'wave';
+    if (r is GravityRule) return 'gravity';
+    if (r is HeatRule) return 'heat';
+    if (r is GrayScottRule) return 'gray-scott';
+    if (r is BZRule) return 'bz';
+    if (r is LifeRule) return 'life';
+    if (r is ArcRule) return 'arc';
+    return 'wave';
   }
 
-  void _regularize() {
-    widget.controller.boundary.regularize(kW / 2, kH / 2, kW * 0.38);
-    widget.controller.boundary.dirty = true;
-    widget.onRebuild();
+  void _cycleMode() {
+    setState(() {
+      if (_mode == PanelMode.closed) _mode = PanelMode.standard;
+      else if (_mode == PanelMode.standard) _mode = PanelMode.full;
+      else _mode = PanelMode.closed;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final rule = widget.controller.rule;
     final params = rule.params;
+    final ruleName = _currentRuleName();
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
       decoration: const BoxDecoration(
         color: Color(0xFF0A0A12),
         border: Border(bottom: BorderSide(color: Color(0xFF1E2A3A), width: 1)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Row 1: 頂点数スライダー ──
+          // ── Header Row (Always Visible) ──
           Row(
             children: [
-              _label('N'),
-              const SizedBox(width: 6),
-              _nBadge(),
+              if (widget.onBack != null) ...[
+                _IconBtn(
+                  icon: Icons.arrow_back,
+                  onTap: widget.onBack!,
+                  color: Colors.white.withOpacity(0.6),
+                  size: 32,
+                ),
+                const SizedBox(width: 12),
+              ],
+              _label('RULE'),
               const SizedBox(width: 8),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor:   const Color(0xFF00C8FF),
-                    inactiveTrackColor: const Color(0xFF1A2A3A),
-                    thumbColor:         const Color(0xFF00C8FF),
-                    overlayColor:       const Color(0x2200C8FF),
-                    trackHeight: 2,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                  ),
-                  child: Slider(
+              _RuleDropdown(
+                value: ruleName,
+                options: _ruleOptions,
+                onChanged: (v) => _restart(v),
+              ),
+              const Spacer(),
+              _IconBtn(
+                icon: Icons.restart_alt,
+                onTap: () => _restart(),
+                color: const Color(0xFFFF3D6B),
+              ),
+              const SizedBox(width: 8),
+              _IconBtn(
+                icon: _mode == PanelMode.closed 
+                    ? Icons.expand_more 
+                    : (_mode == PanelMode.standard ? Icons.expand_less : Icons.fullscreen_exit),
+                onTap: _cycleMode,
+                color: const Color(0xFF00C8FF),
+              ),
+            ],
+          ),
+
+          if (_mode != PanelMode.closed) ...[
+            const SizedBox(height: 8),
+            // ── N Slider (Standard & Full) ──
+            Row(
+              children: [
+                _label('N'),
+                const SizedBox(width: 6),
+                _nBadge(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildSlider(
                     value: _n.toDouble(),
                     min: 3, max: 16,
                     divisions: 13,
                     onChanged: (v) {
                       setState(() {
                         _n = v.toInt();
-                        if (_selected == 'gravity') {
+                        if (ruleName == 'gravity') {
                           final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
                           widget.controller.setParam('G', newG);
                         }
@@ -113,60 +157,36 @@ class _ControlPanelState extends State<ControlPanel> {
                     },
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          // ── Row 2: ルール選択 + ボタン群 ──
-          Row(
-            children: [
-              _label('RULE'),
-              const SizedBox(width: 8),
-              _RuleDropdown(
-                value:    _selected,
-                options:  _ruleOptions,
-                onChanged: (v) => setState(() => _selected = v),
-              ),
-              const SizedBox(width: 10),
-              const Spacer(),
-
-              _IconBtn(
-                icon:    Icons.change_history,
-                tooltip: '正多角形化',
-                onTap:   _regularize,
-                color:   const Color(0xFF00FFB2),
-              ),
-              const SizedBox(width: 6),
-
-              _IconBtn(
-                icon:    Icons.cleaning_services,
-                tooltip: 'フィールド初期化',
-                onTap:   _clean,
-                color:   const Color(0xFFFFD600),
-              ),
-              const SizedBox(width: 6),
-
-              _IconBtn(
-                icon:    Icons.restart_alt,
-                tooltip: '再起動',
-                onTap:   _restart,
-                color:   const Color(0xFFFF3D6B),
-              ),
-            ],
-          ),
-
-          // ── 動的パラメータスライダー ──
-          if (params.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...params.where((p) {
-              // Gravityモードの場合、Gスライダーは頂点数と同期するため非表示にする
-              if (_selected == 'gravity' && p.key == 'G') return false;
-              return true;
-            }).map((p) => _buildParamSlider(p)),
+              ],
+            ),
           ],
 
-          // Gravity用の同期情報表示
-          if (_selected == 'gravity') ...[
+          if (_mode == PanelMode.full && params.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            // ── Dynamic Params (Full Only) ──
+            ...params.where((p) => !(ruleName == 'gravity' && p.key == 'G')).map((p) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(width: 80, child: _label(p.label.toUpperCase())),
+                  Expanded(
+                    child: _buildSlider(
+                      value: p.getCurrentValue?.call() ?? p.defaultValue,
+                      min: p.min, max: p.max,
+                      divisions: p.divisions,
+                      activeColor: const Color(0xFF80C8FF),
+                      onChanged: (v) {
+                        widget.controller.setParam(p.key, v);
+                        widget.onRebuild();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+          
+          if (_mode != PanelMode.closed && ruleName == 'gravity') ...[
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -190,37 +210,28 @@ class _ControlPanelState extends State<ControlPanel> {
     );
   }
 
-  Widget _buildParamSlider(RuleParam p) {
-    // 現在の値を取得（簡易的にdefaultValueを使用するが、本来はRuleから取得すべき）
-    // 今回はRuleに現在の値を保持させる仕組みがないため、簡易的に実装
-    // ※ 実際には Rule 側に値を保持し、それを取得するゲッターが必要
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          SizedBox(width: 60, child: _label(p.label.toUpperCase())),
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: const Color(0xFF80C8FF),
-                inactiveTrackColor: const Color(0xFF1A2A3A),
-                thumbColor: const Color(0xFF80C8FF),
-                trackHeight: 1,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-              ),
-              child: Slider(
-                value: p.getCurrentValue?.call() ?? p.defaultValue,
-                min: p.min,
-                max: p.max,
-                divisions: p.divisions,
-                onChanged: (v) {
-                  widget.controller.setParam(p.key, v);
-                  widget.onRebuild();
-                },
-              ),
-            ),
-          ),
-        ],
+  Widget _buildSlider({
+    required double value,
+    required double min,
+    required double max,
+    int? divisions,
+    required ValueChanged<double> onChanged,
+    Color activeColor = const Color(0xFF00C8FF),
+  }) {
+    return SliderTheme(
+      data: SliderTheme.of(context).copyWith(
+        activeTrackColor: activeColor,
+        inactiveTrackColor: const Color(0xFF1A2A3A),
+        thumbColor: activeColor,
+        overlayColor: activeColor.withOpacity(0.2),
+        trackHeight: 2,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+      ),
+      child: Slider(
+        value: value,
+        min: min, max: max,
+        divisions: divisions,
+        onChanged: onChanged,
       ),
     );
   }
@@ -243,27 +254,16 @@ class _ControlPanelState extends State<ControlPanel> {
       border: Border.all(color: const Color(0xFF00C8FF), width: 1),
       borderRadius: BorderRadius.circular(4),
     ),
-    child: Text(
-      '$_n',
-      style: const TextStyle(
-        color: Color(0xFF00C8FF),
-        fontSize: 13,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
+    child: Text('$_n', style: const TextStyle(color: Color(0xFF00C8FF), fontSize: 13, fontWeight: FontWeight.bold)),
   );
 }
 
 class _RuleDropdown extends StatelessWidget {
-  final String         value;
-  final List<String>   options;
+  final String value;
+  final List<String> options;
   final ValueChanged<String> onChanged;
 
-  const _RuleDropdown({
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
+  const _RuleDropdown({required this.value, required this.options, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -278,16 +278,9 @@ class _RuleDropdown extends StatelessWidget {
         child: DropdownButton<String>(
           value: value,
           dropdownColor: const Color(0xFF0D1A2A),
-          style: const TextStyle(
-            color: Color(0xFF80C8FF),
-            fontSize: 12,
-            letterSpacing: 1.5,
-          ),
+          style: const TextStyle(color: Color(0xFF80C8FF), fontSize: 12, letterSpacing: 1.5),
           isDense: true,
-          items: options.map((o) => DropdownMenuItem(
-            value: o,
-            child: Text(o.toUpperCase()),
-          )).toList(),
+          items: options.map((o) => DropdownMenuItem(value: o, child: Text(o.toUpperCase()))).toList(),
           onChanged: (v) { if (v != null) onChanged(v); },
         ),
       ),
@@ -297,32 +290,24 @@ class _RuleDropdown extends StatelessWidget {
 
 class _IconBtn extends StatelessWidget {
   final IconData icon;
-  final String   tooltip;
   final VoidCallback onTap;
-  final Color    color;
+  final Color color;
+  final double size;
 
-  const _IconBtn({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    required this.color,
-  });
+  const _IconBtn({required this.icon, required this.onTap, required this.color, this.size = 36});
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 36, height: 36,
-          decoration: BoxDecoration(
-            border: Border.all(color: color.withOpacity(0.5)),
-            borderRadius: BorderRadius.circular(8),
-            color: color.withOpacity(0.08),
-          ),
-          child: Icon(icon, color: color, size: 18),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(8),
+          color: color.withOpacity(0.08),
         ),
+        child: Icon(icon, color: color, size: size * 0.5),
       ),
     );
   }

@@ -20,15 +20,18 @@ class FieldPainter extends CustomPainter {
         rect: Rect.fromLTWH(0, 0, size.width, size.height),
         image: gridImage!,
         fit: BoxFit.fill,
-        filterQuality: FilterQuality.low,
+        filterQuality: FilterQuality.medium, // アンチエイリアスを効かせる
       );
     }
 
-    // 境界線の描画
+    // 境界線の描画（ジャギーを隠すために少し太めで滑らかな線を重ねる）
     final boundaryPaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withOpacity(0.4)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 3.0 // 少し太く
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 0.5); // わずかにぼかして馴染ませる
 
     final path = Path();
     final vertices = controller.boundary.vertices;
@@ -44,10 +47,18 @@ class FieldPainter extends CustomPainter {
 
       // 頂点ハンドル
       for (var v in vertices) {
+        final pos = Offset(v.dx * sx, v.dy * sy);
+        // 外光
         canvas.drawCircle(
-          Offset(v.dx * sx, v.dy * sy),
-          6.0,
-          Paint()..color = Colors.white.withOpacity(0.5),
+          pos,
+          8.0,
+          Paint()..color = Colors.white.withOpacity(0.1),
+        );
+        // 中心
+        canvas.drawCircle(
+          pos,
+          5.0,
+          Paint()..color = Colors.white.withOpacity(0.6),
         );
       }
     }
@@ -76,7 +87,6 @@ class FieldPainter extends CustomPainter {
     for (int i = 0; i < rule.bodies.length; i++) {
       final b = rule.bodies[i];
       final c = Offset(b.pos.dx * sx, b.pos.dy * sy);
-      // 質量に応じてサイズを大きくする（上限を緩和）
       final r = (b.mass * 4.0 + 4.0).clamp(4.0, 40.0);
       canvas.drawCircle(c, r + 2, Paint()..color = Colors.white.withOpacity(0.2));
       canvas.drawCircle(
@@ -95,8 +105,6 @@ class FieldPainter extends CustomPainter {
     if (rule.placing != null && rule.dragStart != null) {
       final p = rule.placing!;
       final c = Offset(p.pos.dx * sx, p.pos.dy * sy);
-      
-      // 速度矢印の描画（見やすいようにスケーリング）
       const arrowScale = 50.0; 
       final tip = Offset(
         (p.pos.dx + p.vel.dx * arrowScale) * sx,
@@ -104,28 +112,12 @@ class FieldPainter extends CustomPainter {
       );
       
       canvas.drawCircle(c, 8, Paint()..color = Colors.white.withOpacity(0.6));
-      canvas.drawLine(
-        c, 
-        tip, 
-        Paint()
-          ..color = Colors.white.withOpacity(0.8)
-          ..strokeWidth = 2.0
-      );
-      
-      // 矢印の先端
+      canvas.drawLine(c, tip, Paint()..color = Colors.white.withOpacity(0.8)..strokeWidth = 2.0);
       canvas.drawCircle(tip, 3, Paint()..color = Colors.white);
-      
-      // 簡易的な軌道予測（直線）
       canvas.drawLine(
         tip,
-        Offset(
-          (p.pos.dx + p.vel.dx * arrowScale * 2) * sx,
-          (p.pos.dy + p.vel.dy * arrowScale * 2) * sy,
-        ),
-        Paint()
-          ..color = Colors.white.withOpacity(0.2)
-          ..strokeWidth = 1.0
-          ..style = PaintingStyle.stroke,
+        Offset((p.pos.dx + p.vel.dx * arrowScale * 2) * sx, (p.pos.dy + p.vel.dy * arrowScale * 2) * sy),
+        Paint()..color = Colors.white.withOpacity(0.2)..strokeWidth = 1.0..style = PaintingStyle.stroke,
       );
     }
   }
@@ -142,10 +134,10 @@ Future<ui.Image> gridToImage(GameController c) async {
 
   for (int i = 0; i < kW * kH; i++) {
     final m = mask[i];
-    if (m == 0.0) {
-      pixels[i * 4 + 0] = 0;
-      pixels[i * 4 + 1] = 0;
-      pixels[i * 4 + 2] = 0;
+    
+    // 境界の滑らかさ向上のため、maskの値(0.0~1.0)をアルファ値として利用
+    // ただし、完全な外側(0.0)はスキップ
+    if (m <= 0.0) {
       pixels[i * 4 + 3] = 0;
       continue;
     }
@@ -153,7 +145,8 @@ Future<ui.Image> gridToImage(GameController c) async {
     pixels[i * 4 + 0] = config.pixel(u[i], m, 0);
     pixels[i * 4 + 1] = config.pixel(u[i], m, 1);
     pixels[i * 4 + 2] = config.pixel(u[i], m, 2);
-    pixels[i * 4 + 3] = 255;
+    // maskの値をそのままアルファ値(0~255)にマッピングしてアンチエイリアス効果を出す
+    pixels[i * 4 + 3] = (m * 255).toInt();
   }
 
   final comp = Completer<ui.Image>();

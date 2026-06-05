@@ -2,11 +2,15 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../game/game_controller.dart';
+import '../rules/field_rule.dart';
 import 'field_painter.dart';
 import 'control_panel.dart';
+import 'home_screen.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final FieldRule? initialRule;
+  const GameScreen({super.key, this.initialRule});
+
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
@@ -23,6 +27,9 @@ class _GameScreenState extends State<GameScreen>
   void initState() {
     super.initState();
     _ctrl = GameController();
+    if (widget.initialRule != null) {
+      _ctrl.restart(6, widget.initialRule!);
+    }
     _ticker = createTicker(_onTick)..start();
   }
 
@@ -52,15 +59,10 @@ class _GameScreenState extends State<GameScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 背景画像
-          Image.asset(
-            'assets/images/white-marble1.jpg',
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          ),
-
-          // コンテンツ全体（背景の上に重ねる）
+          // 背景画像（アセットがない場合は単色）
+          Container(color: const Color(0xFF05050A)),
+          
+          // コンテンツ全体
           Positioned.fill(
             child: Column(
               children: [
@@ -69,6 +71,9 @@ class _GameScreenState extends State<GameScreen>
                   child: ControlPanel(
                     controller: _ctrl,
                     onRebuild: () => setState(() {}),
+                    onBack: () => Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    ),
                   ),
                 ),
                 Expanded(
