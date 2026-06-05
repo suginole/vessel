@@ -19,12 +19,12 @@ class GravityRule extends FieldRule {
     // 重力モードのフィールドカラーは黒ベース
     // 等高線の輝線のみを描画
     final v = u.abs(); // ポテンシャルの絶対値を使用
-    const levels = 15;
+    const levels = 1.5; // 15から1.5に削減（1/10）
     final val = v * levels;
     final frac = val - val.floor();
     
     // 等高線の幅を細くして「線」として表現
-    final isContour = frac < 0.15 && v > 0.01;
+    final isContour = frac < 0.05 && v > 0.01; // 密度に合わせて線の幅も少し細く調整
     
     if (isContour) {
       // 輝線：緑〜青系の色
