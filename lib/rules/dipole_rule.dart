@@ -2,8 +2,9 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'field_rule.dart';
 import '../game/grid.dart';
+import '../game/boundary.dart';
 
-enum FieldView { potential, electric, radiation }
+enum FieldView { potential, electric, radiation, fieldLines }
 
 class ElectricDipole {
   Offset pos;
@@ -49,8 +50,12 @@ class DipoleRule extends FieldRule {
   double initialAngularVel = 1.0;
   double damping = 0.999;
   double lightSpeed = 2.0;
+  double interactionStrength = 0.1;
 
   Offset? _dragStart;
+  List<List<Offset>>? _fieldLines;
+  
+  List<List<Offset>>? get fieldLines => _fieldLines;
 
   @override
   String get name => "Dipole";
@@ -79,11 +84,18 @@ class DipoleRule extends FieldRule {
       getCurrentValue: () => initialAngularVel,
     ),
     RuleParam(
+      key: 'interact',
+      label: 'Interaction',
+      min: 0.0, max: 1.0,
+      defaultValue: 0.1,
+      getCurrentValue: () => interactionStrength,
+    ),
+    RuleParam(
       key: 'view',
       label: 'Visualization',
-      min: 0, max: 2,
+      min: 0, max: 3,
       defaultValue: 0,
-      divisions: 2,
+      divisions: 3,
       getCurrentValue: () => view.index.toDouble(),
     ),
   ];
@@ -94,6 +106,7 @@ class DipoleRule extends FieldRule {
     grid.u.fillRange(0, grid.u.length, 0.0);
     grid.uPrev.fillRange(0, grid.uPrev.length, 0.0);
     _dragStart = null;
+    _fieldLines = null;
   }
 
   @override
@@ -101,25 +114,113 @@ class DipoleRule extends FieldRule {
     if (key == 'k') kConstant = val;
     if (key == 'sep') separation = val;
     if (key == 'w') initialAngularVel = val;
+    if (key == 'interact') interactionStrength = val;
     if (key == 'view') view = FieldView.values[val.toInt()];
   }
 
   @override
   void step(Grid grid, double dt) {
-    for (var d in dipoles) {
+    // Compute electric field at each dipole
+    final eFields = <Offset>[];
+    for (int i = 0; i < dipoles.length; i++) {
+      Offset eField = Offset.zero;
+      for (int j = 0; j < dipoles.length; j++) {
+        if (i == j) continue;
+        eField += _computeEFieldAtDipole(dipoles[i].pos, dipoles[j]);
+      }
+      eFields.add(eField);
+    }
+
+    // Update each dipole with interactions and boundary reflection
+    for (int i = 0; i < dipoles.length; i++) {
+      final d = dipoles[i];
+      
+      // Interaction: Force and Torque
+      final e = eFields[i];
+      final pMoment = d.moment;
+      
+      // Translational force: F = ∇(p·E) ≈ (p·∇)E
+      final f = Offset(
+        (pMoment.dx * e.dx + pMoment.dy * e.dy) * interactionStrength * 0.01,
+        (pMoment.dx * e.dy - pMoment.dy * e.dx) * interactionStrength * 0.01,
+      );
+      d.vel += f * dt;
+      
+      // Rotational torque: τ = p × E
+      final torque = pMoment.dx * e.dy - pMoment.dy * e.dx;
+      d.angularVel += torque * interactionStrength * 0.001;
+      
+      // Update position and angle
       d.update(dt, damping);
       
-      // Boundary check
-      if (d.pos.dx < 0 || d.pos.dx >= grid.w) d.vel = Offset(-d.vel.dx, d.vel.dy);
-      if (d.pos.dy < 0 || d.pos.dy >= grid.h) d.vel = Offset(d.vel.dx, -d.vel.dy);
-      
+      // Boundary reflection with normal calculation
+      _reflectAtBoundary(d, grid);
+    }
+
+    _computeFields(grid);
+    _computeFieldLines(grid);
+  }
+
+  Offset _computeEFieldAtDipole(Offset pos, ElectricDipole dipole) {
+    final r = pos - dipole.pos;
+    final r2 = r.dx * r.dx + r.dy * r.dy + 1.0;
+    final r3 = r2 * math.sqrt(r2);
+    
+    final p = dipole.moment;
+    final pDotR = p.dx * r.dx + p.dy * r.dy;
+    
+    final rHat = r / math.sqrt(r2);
+    final ex = kConstant * 1000.0 / r3 * (3 * pDotR * rHat.dx - p.dx);
+    final ey = kConstant * 1000.0 / r3 * (3 * pDotR * rHat.dy - p.dy);
+    
+    return Offset(ex, ey);
+  }
+
+  void _reflectAtBoundary(ElectricDipole d, Grid grid) {
+    final ix = d.pos.dx.toInt();
+    final iy = d.pos.dy.toInt();
+    
+    if (ix < 0 || ix >= grid.w || iy < 0 || iy >= grid.h) {
+      d.vel = Offset(-d.vel.dx, -d.vel.dy);
       d.pos = Offset(
         d.pos.dx.clamp(0.0, grid.w - 1.0),
         d.pos.dy.clamp(0.0, grid.h - 1.0),
       );
+      return;
     }
-
-    _computeFields(grid);
+    
+    if (grid.mask[iy * grid.w + ix] == 0) {
+      // Find normal by sampling neighbors
+      final maskLeft = ix > 0 ? grid.mask[iy * grid.w + (ix - 1)] : 0;
+      final maskRight = ix < grid.w - 1 ? grid.mask[iy * grid.w + (ix + 1)] : 0;
+      final maskUp = iy > 0 ? grid.mask[(iy - 1) * grid.w + ix] : 0;
+      final maskDown = iy < grid.h - 1 ? grid.mask[(iy + 1) * grid.w + ix] : 0;
+      
+      final nx = (maskRight - maskLeft) / 2.0;
+      final ny = (maskDown - maskUp) / 2.0;
+      final nLen = math.sqrt(nx * nx + ny * ny);
+      
+      if (nLen > 0.1) {
+        final nxNorm = nx / nLen;
+        final nyNorm = ny / nLen;
+        
+        // Reflect velocity
+        final dot = d.vel.dx * nxNorm + d.vel.dy * nyNorm;
+        d.vel = Offset(
+          d.vel.dx - 2 * dot * nxNorm,
+          d.vel.dy - 2 * dot * nyNorm,
+        );
+        
+        // Increase angular velocity on sharp reflection
+        d.angularVel += dot.abs() * 0.1;
+      }
+      
+      // Push back into domain
+      d.pos = Offset(
+        d.pos.dx.clamp(0.5, grid.w - 1.5),
+        d.pos.dy.clamp(0.5, grid.h - 1.5),
+      );
+    }
   }
 
   void _computeFields(Grid grid) {
@@ -174,6 +275,52 @@ class DipoleRule extends FieldRule {
         grid.u[i] = math.sqrt(ex * ex + ey * ey);
       } else if (view == FieldView.radiation) {
         grid.u[i] = erad;
+      } else if (view == FieldView.fieldLines) {
+        grid.u[i] = math.sqrt(ex * ex + ey * ey);
+      }
+    }
+  }
+
+  void _computeFieldLines(Grid grid) {
+    if (view != FieldView.fieldLines) return;
+    
+    _fieldLines = [];
+    const numLines = 16;
+    const stepSize = 0.5;
+    const maxSteps = 200;
+    
+    for (final d in dipoles) {
+      for (int lineIdx = 0; lineIdx < numLines; lineIdx++) {
+        final angle = (lineIdx / numLines) * math.pi * 2;
+        final line = <Offset>[];
+        var pos = d.pos + Offset(math.cos(angle), math.sin(angle)) * 5.0;
+        
+        for (int step = 0; step < maxSteps; step++) {
+          if (pos.dx < 0 || pos.dx >= grid.w || pos.dy < 0 || pos.dy >= grid.h) break;
+          if (grid.mask[pos.dy.toInt() * grid.w + pos.dx.toInt()] == 0) break;
+          
+          line.add(pos);
+          
+          // Compute E field at current position
+          var ex = 0.0, ey = 0.0;
+          for (final dipole in dipoles) {
+            final r = pos - dipole.pos;
+            final r2 = r.dx * r.dx + r.dy * r.dy + 1.0;
+            final r3 = r2 * math.sqrt(r2);
+            final p = dipole.moment;
+            final pDotR = p.dx * r.dx + p.dy * r.dy;
+            final rHat = r / math.sqrt(r2);
+            ex += kConstant * 1000.0 / r3 * (3 * pDotR * rHat.dx - p.dx);
+            ey += kConstant * 1000.0 / r3 * (3 * pDotR * rHat.dy - p.dy);
+          }
+          
+          final eMag = math.sqrt(ex * ex + ey * ey);
+          if (eMag < 0.1) break;
+          
+          pos += Offset(ex / eMag, ey / eMag) * stepSize;
+        }
+        
+        if (line.isNotEmpty) _fieldLines!.add(line);
       }
     }
   }
@@ -208,7 +355,7 @@ class DipoleRule extends FieldRule {
         final b = (v * 150 * m).toInt().clamp(0, 255);
         return [r, g, b][ch];
       });
-    } else {
+    } else if (view == FieldView.radiation) {
       return RenderConfig(pixel: (u, m, ch) {
         final v = (u * 1.5).clamp(-1.0, 1.0);
         int r, g, b;
@@ -219,6 +366,16 @@ class DipoleRule extends FieldRule {
           r = 255; g = (255 * (1 - t)).toInt(); b = g;
         }
         return ([r, g, b][ch] * m).toInt().clamp(0, 255);
+      });
+    } else {
+      // Field lines view
+      return RenderConfig(pixel: (u, m, ch) {
+        final v = (u * 0.15).clamp(0.0, 1.0);
+        int r, g, b;
+        r = (50 * m).toInt();
+        g = (50 * m).toInt();
+        b = (100 + v * 155 * m).toInt();
+        return [r, g, b][ch].clamp(0, 255);
       });
     }
   }

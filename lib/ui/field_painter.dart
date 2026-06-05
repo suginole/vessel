@@ -9,6 +9,7 @@ import '../rules/field_rule.dart';
 import '../rules/gravity_rule.dart';
 import '../rules/electric_rule.dart';
 import '../rules/dipole_rule.dart';
+import 'dart:math' as math;
 
 // グリッドデータを画像に変換するユーティリティ関数
 Future<ui.Image> gridToImage(GameController ctrl) async {
@@ -158,6 +159,63 @@ class FieldPainter extends CustomPainter {
     }
   }
 
+  void _drawDipole(Canvas canvas, Size size, DipoleRule rule) {
+    final sx = size.width / kW;
+    final sy = size.height / kH;
+    final paint = Paint();
+    
+    // Draw field lines if available
+    if (rule.fieldLines != null) {
+      for (final line in rule.fieldLines!) {
+        for (int i = 0; i < line.length - 1; i++) {
+          final p1 = line[i];
+          final p2 = line[i + 1];
+          canvas.drawLine(
+            Offset(p1.dx * sx, p1.dy * sy),
+            Offset(p2.dx * sx, p2.dy * sy),
+            paint..color = Colors.cyan.withValues(alpha: 0.4)..strokeWidth = 0.5,
+          );
+        }
+      }
+    }
+    
+    // Draw dipoles
+    for (final d in rule.dipoles) {
+      final pos = Offset(d.pos.dx * sx, d.pos.dy * sy);
+      final momentDir = Offset(math.cos(d.angle), math.sin(d.angle));
+      final momentEnd = pos + momentDir * (d.separation * sx);
+      
+      // Draw dipole moment vector
+      canvas.drawLine(
+        pos,
+        momentEnd,
+        paint..color = Colors.yellow.withValues(alpha: 0.6)..strokeWidth = 2.0,
+      );
+      
+      // Draw positive charge
+      canvas.drawCircle(
+        momentEnd,
+        3.0,
+        paint..color = const Color(0xFFFF3D6B),
+      );
+      
+      // Draw negative charge
+      final negEnd = pos - momentDir * (d.separation * sx);
+      canvas.drawCircle(
+        negEnd,
+        3.0,
+        paint..color = const Color(0xFF00C8FF),
+      );
+      
+      // Draw center
+      canvas.drawCircle(
+        pos,
+        2.0,
+        paint..color = Colors.white,
+      );
+    }
+  }
+
   void _drawBoundary(Canvas canvas, Size size, List<Offset> vertices) {
     final sx = size.width / kW;
     final sy = size.height / kH;
@@ -172,6 +230,12 @@ class FieldPainter extends CustomPainter {
     canvas.drawPath(path, Paint()..color = Colors.white.withValues(alpha: 0.3)..strokeWidth = 2.0..style = PaintingStyle.stroke);
     for (final v in vertices) {
       canvas.drawCircle(Offset(v.dx * sx, v.dy * sy), 5.0, Paint()..color = Colors.cyanAccent.withValues(alpha: 0.5));
+    }
+  }
+
+  void _drawDipoleRuleOverlay(Canvas canvas, Size size, DipoleRule rule) {
+    if (controller.rule is DipoleRule) {
+      _drawDipole(canvas, size, rule);
     }
   }
 
