@@ -38,19 +38,28 @@ class ElectricDipole {
   }
 }
 
+class DipoleBinding {
+  int idA, idB;
+  double bondLength;
+  DipoleBinding(this.idA, this.idB, this.bondLength);
+}
+
 class DipoleRule extends FieldRule {
   final List<ElectricDipole> dipoles = [];
+  final List<DipoleBinding> bonds = [];
   
   double k = 100.0; // Coulomb constant
   double separation = 4.0;
   double initialAngularVel = 0.1;
   double damping = 0.98;
   double interactionStrength = 1.0;
+  double lightSpeed = 2.0;
   
   // Visualization mode: 0: Potential, 1: Electric Field, 2: Radiation
   int visualizationMode = 0;
 
   Offset? _dragStart;
+  Offset? _dragCurrent;
   List<List<Offset>>? _fieldLines;
   List<List<Offset>>? get fieldLines => _fieldLines;
 
@@ -88,9 +97,14 @@ class DipoleRule extends FieldRule {
 
   @override
   void step(Grid grid, double dt) {
+    // 1. 波動方程式による電磁波伝播 (visualizationMode == 2 の時)
+    if (visualizationMode == 2) {
+      _stepWave(grid, dt);
+    }
+
     if (dipoles.isEmpty) return;
 
-    // 1. Physics: Compute interactions
+    // 2. Physics: Compute interactions
     final List<Offset> forces = List.filled(dipoles.length, Offset.zero);
     final List<double> torques = List.filled(dipoles.length, 0.0);
 
@@ -106,7 +120,7 @@ class DipoleRule extends FieldRule {
       forces[i] = _computeForce(d, i);
     }
 
-    // 2. Physics: Update states
+    // 3. Physics: Update states
     for (int i = 0; i < dipoles.length; i++) {
       final d = dipoles[i];
       d.vel += forces[i] * interactionStrength * dt;
@@ -119,11 +133,82 @@ class DipoleRule extends FieldRule {
       _reflectAtBoundary(d, grid);
     }
 
-    // 3. Visualization: Write to grid
+    // 4. Binding logic
+    _updateBonds(dt);
+
+    // 5. Visualization: Write to grid
     _writeToGrid(grid);
     
-    // 4. Visualization: Compute field lines (can be skipped or throttled)
-    _computeFieldLines(grid);
+    // 6. Visualization: Compute field lines (Radiationモードのみ)
+    if (visualizationMode == 2) {
+      _computeFieldLines(grid);
+    } else {
+      _fieldLines = null;
+    }
+  }
+
+  void _stepWave(Grid grid, double dt) {
+    final w = grid.w;
+    final h = grid.h;
+    final u = grid.u;
+    final uPrev = grid.uPrev;
+    final next = Float32List(u.length);
+    final c2 = lightSpeed * lightSpeed;
+
+    for (int y = 1; y < h - 1; y++) {
+      for (int x = 1; x < w - 1; x++) {
+        final i = y * w + x;
+        final lap = u[i+1] + u[i-1] + u[i+w] + u[i-w] - 4 * u[i];
+        next[i] = (2 * u[i] - uPrev[i] + c2 * lap) * 0.99; // わずかに減衰
+      }
+    }
+    
+    // 双極子の加速度を波源として注入
+    for (final d in dipoles) {
+      final pDotDot = (d.moment - d.pPrev * 2.0 + d.pPrev2);
+      final idx = d.pos.dy.toInt() * w + d.pos.dx.toInt();
+      if (idx >= 0 && idx < u.length) {
+        next[idx] += pDotDot.distance * 5.0;
+      }
+    }
+
+    uPrev.setAll(0, u);
+    u.setAll(0, next);
+  }
+
+  void _updateBonds(double dt) {
+    // 既存の結合の維持（バネ的な拘束）
+    for (final b in bonds) {
+      final dA = dipoles[b.idA];
+      final dB = dipoles[b.idB];
+      final rVec = dB.pos - dA.pos;
+      final dist = rVec.distance;
+      final diff = dist - b.bondLength;
+      final force = rVec * (diff * 0.1);
+      dA.vel += force;
+      dB.vel -= force;
+      
+      // 角度を揃えるトルク
+      final angleDiff = (dB.angle - dA.angle);
+      dA.angularVel += angleDiff * 0.05;
+      dB.angularVel -= angleDiff * 0.05;
+    }
+
+    // 新規結合の判定
+    const bindRadius = 15.0;
+    for (int i = 0; i < dipoles.length; i++) {
+      for (int j = i + 1; j < dipoles.length; j++) {
+        if (bonds.any((b) => (b.idA == i && b.idB == j) || (b.idA == j && b.idB == i))) continue;
+        
+        final dist = (dipoles[i].pos - dipoles[j].pos).distance;
+        final angleDiff = (dipoles[i].angle - dipoles[j].angle).abs() % math.pi;
+        final relVel = (dipoles[i].vel - dipoles[j].vel).distance;
+
+        if (dist < bindRadius && angleDiff < 0.3 && relVel < 5.0) {
+          bonds.add(DipoleBinding(i, j, dist));
+        }
+      }
+    }
   }
 
   Offset _computeExternalEField(Offset pos, int skipIndex) {
@@ -273,10 +358,13 @@ class DipoleRule extends FieldRule {
   @override
   void onTouchStart(Grid grid, Offset pos) {
     _dragStart = pos;
+    _dragCurrent = pos;
   }
 
   @override
-  void onTouchMove(Grid grid, Offset pos) {}
+  void onTouchMove(Grid grid, Offset pos) {
+    _dragCurrent = pos;
+  }
 
   @override
   void onTouchEnd(Grid grid, Offset pos) {
@@ -284,12 +372,13 @@ class DipoleRule extends FieldRule {
     final delta = pos - _dragStart!;
     
     dipoles.add(ElectricDipole(
-      pos: pos,
+      pos: _dragStart!, // 開始点に配置
       vel: delta * 0.05,
       angle: math.atan2(delta.dy, delta.dx),
       angularVel: initialAngularVel,
       separation: separation,
     ));
     _dragStart = null;
+    _dragCurrent = null;
   }
 }

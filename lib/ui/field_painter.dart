@@ -139,8 +139,19 @@ class FieldPainter extends CustomPainter {
     final sy = size.height / kH;
     final paint = Paint();
     
-    // Draw field lines if available
-    if (rule.fieldLines != null) {
+    // 1. 結合線の描画
+    for (final b in rule.bonds) {
+      final dA = rule.dipoles[b.idA];
+      final dB = rule.dipoles[b.idB];
+      canvas.drawLine(
+        Offset(dA.pos.dx * sx, dA.pos.dy * sy),
+        Offset(dB.pos.dx * sx, dB.pos.dy * sy),
+        paint..color = Colors.white.withValues(alpha: 0.4)..strokeWidth = 1.0,
+      );
+    }
+
+    // 2. フィールドラインの描画 (Radiationモードのみ)
+    if (rule.visualizationMode == 2 && rule.fieldLines != null) {
       for (final line in rule.fieldLines!) {
         for (int i = 0; i < line.length - 1; i++) {
           final p1 = line[i];
@@ -154,7 +165,7 @@ class FieldPainter extends CustomPainter {
       }
     }
     
-    // Draw dipoles
+    // 3. 双極子の描画
     for (final d in rule.dipoles) {
       final pos = Offset(d.pos.dx * sx, d.pos.dy * sy);
       final momentDir = Offset(math.cos(d.angle), math.sin(d.angle));
