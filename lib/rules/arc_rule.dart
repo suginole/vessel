@@ -75,13 +75,7 @@ class ArcRule extends FieldRule {
     final w = grid.w, h = grid.h;
     final mask = grid.mask;
 
-    // ── 1. Laplace（5フレームに1回）──────────
-    if (_relaxFrame % 5 == 0) {
-      _solveLaplace(grid, 30);
-    }
-    _relaxFrame++;
-
-    // ── 2. チャンネル成長（毎フレーム）──────────
+    // ── 1. チャンネル成長（毎フレーム）──────────
     if (_active && _touchPos != null) {
       // 全チャンネルが到達済みなら放電完了
       final allDone = _channels.isNotEmpty && _channels.every((c) => c.reached);
@@ -95,9 +89,15 @@ class ArcRule extends FieldRule {
           for (final ch in _channels) {
             if (!ch.reached) _growChannel(ch, grid);
           }
+          // 成長ごとに少しだけLaplaceを解いて電位場を更新（滞留防止）
+          _solveLaplace(grid, 2);
         }
       }
     }
+
+    // 毎フレームのベースLaplace
+    _solveLaplace(grid, 6);
+    _relaxFrame++;
 
     // ── 3. 減衰 ───────────────────────────────
     if (!_active) {
@@ -164,15 +164,16 @@ class ArcRule extends FieldRule {
     final tx = ti % w;
     final ty = ti ~/ w;
 
-    // 4近傍候補
-    const dx = [1, -1, 0, 0];
-    const dy = [0, 0, 1, -1];
+    // 8近傍候補（斜め込み）
+    const dx = [1, -1, 0, 0, 1, 1, -1, -1];
+    const dy = [0, 0, 1, -1, 1, -1, 1, -1];
+    const dist = [1.0, 1.0, 1.0, 1.0, 1.414, 1.414, 1.414, 1.414];
 
     final candidates = <int>[];
     final probs      = <double>[];
     double sumP      = 0.0;
 
-    for (int d = 0; d < 4; d++) {
+    for (int d = 0; d < 8; d++) {
       final nx = tx + dx[d];
       final ny = ty + dy[d];
       if (nx < 1 || nx >= w-1 || ny < 1 || ny >= h-1) continue;
@@ -185,16 +186,17 @@ class ArcRule extends FieldRule {
         return;
       }
 
-      // 電界強度
+      // 電界強度 (中心差分)
       final dPhiX = _phi[ni+1] - _phi[ni-1];
       final dPhiY = _phi[ni+w] - _phi[ni-w];
-      final grad  = sqrt(dPhiX*dPhiX + dPhiY*dPhiY) + 1e-6;
+      // 前方差分（先端からの勾配）を重視して直進性を強化
+      final dPhiFwd = (_phi[ni] - _phi[ti]).abs();
+      final grad = (dPhiFwd * 2.0 + sqrt(dPhiX*dPhiX + dPhiY*dPhiY)) / dist[d] + 1e-6;
 
       // 直進性：直前方向との内積
-      final ndx = dx[d].toDouble();
-      final ndy = dy[d].toDouble();
-      final dot = (ch.tipDir.dx * ndx + ch.tipDir.dy * ndy)
-                    .clamp(-1.0, 1.0);
+      final ndx = dx[d] / dist[d];
+      final ndy = dy[d] / dist[d];
+      final dot = (ch.tipDir.dx * ndx + ch.tipDir.dy * ndy).clamp(-1.0, 1.0);
       final dirBonus = pow((dot + 1.0) / 2.0 + 0.05, gamma);
 
       final p = pow(grad, eta) * dirBonus;
@@ -203,7 +205,11 @@ class ArcRule extends FieldRule {
       sumP += p;
     }
 
-    if (candidates.isEmpty || sumP == 0) return;
+    // 滞留防止：電界勾配がない場合は強制前進
+    if (sumP < 1e-6) {
+      _forceAdvance(ch, grid);
+      return;
+    }
 
     // 確率的選択
     double r = _rng.nextDouble() * sumP;
@@ -214,15 +220,36 @@ class ArcRule extends FieldRule {
         final ni = candidates[k];
         _broken[ni] = 1.0;
         ch.cells.add(ni);
-        // 進行方向更新
+        // 進行方向更新 (正規化)
         final nx = ni % w, ny = ni ~/ w;
-        ch.tipDir = Offset(
-          (nx - tx).toDouble(),
-          (ny - ty).toDouble(),
-        );
+        final dxx = (nx - tx).toDouble();
+        final dyy = (ny - ty).toDouble();
+        final dlen = sqrt(dxx*dxx + dyy*dyy);
+        ch.tipDir = Offset(dxx / dlen, dyy / dlen);
         ch.tipIdx = ni;
         break;
       }
+    }
+  }
+
+  void _forceAdvance(_Channel ch, Grid grid) {
+    final w = grid.w;
+    final tx = ch.tipIdx % w;
+    final ty = ch.tipIdx ~/ w;
+
+    // 直前方向への強制前進
+    final nx = (tx + ch.tipDir.dx.round()).clamp(1, w-2);
+    final ny = (ty + ch.tipDir.dy.round()).clamp(1, grid.h-2);
+    final ni = ny * w + nx;
+
+    if (grid.mask[ni] == 0.0) {
+      ch.reached = true;
+      return;
+    }
+    if (_broken[ni] < 0.5) {
+      _broken[ni] = 1.0;
+      ch.cells.add(ni);
+      ch.tipIdx = ni;
     }
   }
 
