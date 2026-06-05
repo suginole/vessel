@@ -13,7 +13,7 @@ class ElectricDipole {
   double charge;
   double separation;
 
-  // For radiation calculation (p_dot_dot)
+  // For radiation calculation
   Offset pPrev = Offset.zero;
   Offset pPrev2 = Offset.zero;
 
@@ -33,7 +33,6 @@ class ElectricDipole {
     angle += angularVel * dt;
     angularVel *= damping;
 
-    // Update moment history for acceleration calculation
     pPrev2 = pPrev;
     pPrev = moment;
   }
@@ -96,16 +95,18 @@ class DipoleRule extends FieldRule {
   }
 
   @override
-  void update(Grid grid, double dt) {
+  void step(Grid grid, double dt) {
     for (var d in dipoles) {
       d.update(dt, damping);
       
       // Boundary check
-      if (d.pos.dx < 0 || d.pos.dx >= grid.w || d.pos.dy < 0 || d.pos.dy >= grid.h) {
-        // Simple bounce
-        if (d.pos.dx < 0 || d.pos.dx >= grid.w) d.vel = Offset(-d.vel.dx, d.vel.dy);
-        if (d.pos.dy < 0 || d.pos.dy >= grid.h) d.vel = Offset(d.vel.dx, -d.vel.dy);
-      }
+      if (d.pos.dx < 0 || d.pos.dx >= grid.w) d.vel = Offset(-d.vel.dx, d.vel.dy);
+      if (d.pos.dy < 0 || d.pos.dy >= grid.h) d.vel = Offset(d.vel.dx, -d.vel.dy);
+      
+      d.pos = Offset(
+        d.pos.dx.clamp(0.0, grid.w - 1.0),
+        d.pos.dy.clamp(0.0, grid.h - 1.0),
+      );
     }
 
     _computeFields(grid);
@@ -119,7 +120,6 @@ class DipoleRule extends FieldRule {
     for (int i = 0; i < w * h; i++) {
       if (grid.mask[i] == 0) {
         grid.u[i] = 0;
-        grid.uPrev[i] = 0;
         continue;
       }
 
@@ -144,18 +144,14 @@ class DipoleRule extends FieldRule {
         final px = d.moment.dx;
         final py = d.moment.dy;
 
-        // 1. Potential phi = k * (p·r_hat) / r^2
         final pDotR = px * rHatX + py * rHatY;
         phi += kConstant * pDotR * 100.0 / r2;
 
-        // 2. Electric Field E = k/r^3 * (3(p·r_hat)r_hat - p)
-        // We store magnitude in u for 'electric' view, but we need direction for painter
         final ex_i = kConstant * 1000.0 / r3 * (3 * pDotR * rHatX - px);
         final ey_i = kConstant * 1000.0 / r3 * (3 * pDotR * rHatY - py);
         ex += ex_i;
         ey += ey_i;
 
-        // 3. Radiation Field E_rad
         final pddx = d.pDotDot.dx;
         final pddy = d.pDotDot.dy;
         final pdd_perp = pddx * (-rHatY) + pddy * rHatX;
@@ -166,7 +162,6 @@ class DipoleRule extends FieldRule {
         grid.u[i] = phi;
       } else if (view == FieldView.electric) {
         grid.u[i] = math.sqrt(ex * ex + ey * ey);
-        // We could store angle in uPrev if needed, but let's keep uPrev for radiation
       } else if (view == FieldView.radiation) {
         grid.u[i] = erad;
       }
@@ -204,7 +199,6 @@ class DipoleRule extends FieldRule {
         return [r, g, b][ch];
       });
     } else {
-      // Radiation: Blue-White-Red wave
       return RenderConfig(pixel: (u, m, ch) {
         final v = (u * 1.5).clamp(-1.0, 1.0);
         int r, g, b;
@@ -220,15 +214,22 @@ class DipoleRule extends FieldRule {
   }
 
   @override
-  void onTouch(Offset pos, Offset delta, bool isEnd) {
-    if (isEnd) {
-      dipoles.add(ElectricDipole(
-        pos: pos,
-        vel: delta * 0.5,
-        angle: math.atan2(delta.dy, delta.dx),
-        angularVel: initialAngularVel,
-        separation: separation,
-      ));
-    }
+  void onTouchStart(Grid grid, Offset pos) {}
+
+  @override
+  void onTouchMove(Grid grid, Offset pos) {}
+
+  @override
+  void onTouchEnd(Grid grid, Offset pos) {
+    // Note: The logic previously used delta, but onTouchEnd only gets pos.
+    // For now, we'll spawn with random angle or use a stored start position if we want velocity.
+    // Let's keep it simple to match the signature.
+    dipoles.add(ElectricDipole(
+      pos: pos,
+      vel: Offset.zero,
+      angle: math.Random().nextDouble() * math.pi * 2,
+      angularVel: initialAngularVel,
+      separation: separation,
+    ));
   }
 }

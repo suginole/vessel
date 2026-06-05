@@ -7,6 +7,8 @@ class GravityBody {
   Offset pos;
   Offset vel;
   double mass;
+  final List<Offset> trail = [];
+  
   GravityBody({required this.pos, required this.vel, required this.mass});
 }
 
@@ -16,30 +18,22 @@ class GravityRule extends FieldRule {
 
   @override
   RenderConfig get renderConfig => RenderConfig(pixel: (u, m, ch) {
-    // 重力モードのフィールドカラーは黒ベース
-    // 等高線の輝線のみを描画
     final v = u.abs(); 
-    
-    // 対数スケールによる可視化：中心付近の無限の密を抑える
-    // log(1 + v) を使うことで、小さな値は線形に近く、大きな値は対数的に抑制される
     final logV = log(1.0 + v * 0.01); 
     const levels = 8.0; 
     final val = logV * levels;
     final frac = val - val.floor();
     
-    // 等高線の幅
     final isContour = frac < 0.1 && logV > 0.001;
     
     if (isContour) {
-      // 輝線：緑〜青系の色
       final rgb = [
-        (0.2 * 255 * m).toInt(), // R
-        (0.8 * 255 * m).toInt(), // G
-        (1.0 * 255 * m).toInt(), // B
+        (0.2 * 255 * m).toInt(),
+        (0.8 * 255 * m).toInt(),
+        (1.0 * 255 * m).toInt(),
       ];
       return rgb[ch].clamp(0, 255);
     } else {
-      // 背景は黒
       return 0;
     }
   });
@@ -55,7 +49,6 @@ class GravityRule extends FieldRule {
   double currentMass = 1.0;
 
   List<GravityBody> bodies = [];
-  List<Offset> trails = [];
   
   GravityBody? placing;
   Offset? dragStart;
@@ -63,7 +56,6 @@ class GravityRule extends FieldRule {
   @override
   void init(Grid grid) {
     bodies = [];
-    trails = [];
     placing = null;
     dragStart = null;
     grid.u.fillRange(0, grid.u.length, 0.0);
@@ -79,7 +71,6 @@ class GravityRule extends FieldRule {
 
   @override
   void step(Grid grid, double dt) {
-    // ★ 時間の刻み幅（dt）の調整：ここを小さくするとゆっくり進みます（例: dt * 0.1）
     const double timeScale = 0.1;
     final double scaledDt = dt * timeScale;
 
@@ -90,12 +81,10 @@ class GravityRule extends FieldRule {
       _stepYoshida(dtSub, grid.mask, grid.w, grid.h);
     }
 
-    if (bodies.isNotEmpty) {
-      for (var b in bodies) {
-        trails.add(b.pos);
-      }
-      if (trails.length > 500) {
-        trails.removeRange(0, trails.length - 500);
+    for (var b in bodies) {
+      b.trail.add(b.pos);
+      if (b.trail.length > 100) {
+        b.trail.removeAt(0);
       }
     }
 
@@ -117,7 +106,6 @@ class GravityRule extends FieldRule {
   }
 
   void _integrate(double dtC, double dtD, List<double> mask, int w, int h) {
-    // 1. 位置更新と境界反射
     for (var b in bodies) {
       b.pos += b.vel * dtC;
       
@@ -134,12 +122,10 @@ class GravityRule extends FieldRule {
       }
     }
 
-    // 2. 合体判定（距離が極小の場合）
     _handleMergers();
 
     if (dtD == 0) return;
 
-    // 3. 速度更新（加速度）
     for (int i = 0; i < bodies.length; i++) {
       Offset acc = Offset.zero;
       for (int j = 0; j < bodies.length; j++) {
@@ -164,7 +150,6 @@ class GravityRule extends FieldRule {
         if (toRemove.contains(j)) continue;
         
         final dist = (bodies[i].pos - bodies[j].pos).distance;
-        // ★ 合体半径の調整：この mergeDist を小さくすると、より近づかないと合体しなくなります
         final mergeDist = (bodies[i].mass + bodies[j].mass) * 2.0 + 2.0;
         
         if (dist < mergeDist) {
@@ -216,7 +201,6 @@ class GravityRule extends FieldRule {
           final dx = b.pos.dx - x;
           final dy = b.pos.dy - y;
           const double epsSq = 25.0;
-          // Gが極小(0.00002~0.01)なので、可視化のために1000倍以上にブースト
           phi += (_g * b.mass * 50000.0) / sqrt(dx * dx + dy * dy + epsSq);
         }
         u[i] = phi; 
@@ -233,7 +217,6 @@ class GravityRule extends FieldRule {
   @override
   void onTouchMove(Grid grid, Offset p) {
     if (placing != null && dragStart != null) {
-      // さらに5分の1に抑制 (0.02 / 5 = 0.004)
       const double velocityScale = 0.004;
       placing!.vel = (p - dragStart!) * velocityScale;
     }
