@@ -57,7 +57,7 @@ class DipoleRule extends FieldRule {
   double separation = 4.0;
   double initialAngularVel = 0.1;
   double damping = 0.98;
-  double interactionStrength = 1.0;
+  double interactionStrength = 5.0; // 並進運動を強化
   double lightSpeed = 2.0;
   
   // Visualization mode: 0: Potential, 1: Electric Field, 2: Radiation
@@ -271,7 +271,8 @@ class DipoleRule extends FieldRule {
 
   Offset _eFieldOf(ElectricDipole d, Offset target) {
     final rVec = target - d.pos;
-    final r2 = rVec.dx * rVec.dx + rVec.dy * rVec.dy + 1.0;
+    // 軟化パラメータを小さくして近距離の力を強める (1.0 -> 0.1)
+    final r2 = rVec.dx * rVec.dx + rVec.dy * rVec.dy + 0.1;
     final r = math.sqrt(r2);
     final r3 = r2 * r;
     final r5 = r3 * r2;
@@ -287,7 +288,7 @@ class DipoleRule extends FieldRule {
   }
 
   Offset _computeForce(ElectricDipole d, int index) {
-    const double h = 0.5;
+    const double h = 0.2; // 差分間隔を狭めて精度向上
     final p = d.moment;
     
     final exPlus = _computeExternalEField(d.pos + const Offset(h, 0), index);
@@ -302,7 +303,8 @@ class DipoleRule extends FieldRule {
     final fy = p.dx * (eyPlus.dx - eyMinus.dx) / (2 * h) + 
                p.dy * (eyPlus.dy - eyMinus.dy) / (2 * h);
                
-    return Offset(fx, fy);
+    // 力をさらにスケーリング (2.0倍)
+    return Offset(fx, fy) * 2.0;
   }
 
   void _reflectAtBoundary(ElectricDipole d, Grid grid) {
