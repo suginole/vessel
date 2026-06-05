@@ -117,8 +117,8 @@ class ArcRule extends FieldRule {
     int    curIdx = ty * w + tx;
     
     // 初期方向：タッチ点周囲の電位勾配から決定
-    final dPhiX0 = _phi[curIdx + 1] - _phi[curIdx - 1];
-    final dPhiY0 = _phi[curIdx + w] - _phi[curIdx - w];
+    final dPhiX0 = _phi[(ty * w + (tx + 1).clamp(0, w - 1))] - _phi[(ty * w + (tx - 1).clamp(0, w - 1))];
+    final dPhiY0 = _phi[((ty + 1).clamp(0, h - 1) * w + tx)] - _phi[((ty - 1).clamp(0, h - 1) * w + tx)];
     double gradX = dPhiX0;
     double gradY = dPhiY0;
     
@@ -126,7 +126,7 @@ class ArcRule extends FieldRule {
       gradX = _rng.nextDouble() - 0.5;
       gradY = _rng.nextDouble() - 0.5;
     } else {
-      gradX += (_rng.nextDouble() - 0.5) * 0.4; // 揺らぎを少し強める
+      gradX += (_rng.nextDouble() - 0.5) * 0.4;
       gradY += (_rng.nextDouble() - 0.5) * 0.4;
     }
     
@@ -152,16 +152,18 @@ class ArcRule extends FieldRule {
       for (int d = 0; d < 8; d++) {
         final nx = cx + ndx[d];
         final ny = cy + ndy[d];
-        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+        
+        // 1. グリッド端のチェック
+        if (nx <= 0 || nx >= w - 1 || ny <= 0 || ny >= h - 1) {
+          _finalizePath(path, flicker);
+          return true;
+        }
+
         final ni = ny * w + nx;
 
-        // 壁到達
+        // 2. 多角形境界のチェック
         if (mask[ni] == 0.0) {
-          // テーパリング（根元から先端に向かってわずかに細く・暗く）
-          for (int i = 0; i < path.length; i++) {
-            final t = 1.0 - (i / path.length) * 0.3;
-            _channel[path[i]] = (1.0 * t * flicker).clamp(0.0, 1.5);
-          }
+          _finalizePath(path, flicker);
           return true;
         }
 
@@ -213,16 +215,24 @@ class ArcRule extends FieldRule {
     return false;
   }
 
+  void _finalizePath(List<int> path, double flicker) {
+    for (int i = 0; i < path.length; i++) {
+      final t = 1.0 - (i / path.length) * 0.3;
+      _channel[path[i]] = (1.0 * t * flicker).clamp(0.0, 1.5);
+    }
+  }
+
   // Laplace ガウスザイデル
   void _solveLaplace(Grid grid, int iter) {
     final w    = grid.w;
-    final h    = grid.h;
+    final h = grid.h;
     final mask = grid.mask;
 
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         final i = y * w + x;
-        if (mask[i] == 0.0) { _phi[i] =  1.0; continue; }
+        // グリッド端も mask に従うように修正（強制的に 1.0 にしない）
+        if (mask[i] == 0.0) { _phi[i] = 1.0; continue; }
         if (_isTouchCell(x, y)) { _phi[i] = -1.0; continue; }
         
         // 既存経路も導体（アース）として扱うことで、他の経路を引き寄せる
