@@ -92,34 +92,6 @@ class FieldPainter extends CustomPainter {
     _drawBoundary(canvas, size, controller.boundary.vertices);
   }
 
-  void _drawDipole(Canvas canvas, Size size, DipoleRule rule) {
-    final sx = size.width / kW;
-    final sy = size.height / kH;
-    final paint = Paint();
-
-    for (var d in rule.dipoles) {
-      final pos = Offset(d.pos.dx * sx, d.pos.dy * sy);
-      final moment = d.moment;
-      final angle = d.angle;
-      final sep = d.separation * sx;
-
-      // Draw the dipole body (line connecting charges)
-      final p1 = pos + Offset(math.cos(angle), math.sin(angle)) * sep / 2;
-      final p2 = pos - Offset(math.cos(angle), math.sin(angle)) * sep / 2;
-      
-      canvas.drawLine(p1, p2, paint..color = Colors.white.withValues(alpha: 0.5)..strokeWidth = 2);
-      
-      // Positive charge
-      canvas.drawCircle(p1, 4, paint..color = const Color(0xFFFF3D6B));
-      // Negative charge
-      canvas.drawCircle(p2, 4, paint..color = const Color(0xFF00C8FF));
-      
-      // Moment vector arrow
-      final arrowEnd = pos + moment * 2.0 * sx;
-      canvas.drawLine(pos, arrowEnd, paint..color = Colors.yellowAccent..strokeWidth = 1);
-    }
-  }
-
   void _drawElectric(Canvas canvas, Size size, ElectricRule rule) {
     final sx = size.width / kW;
     final sy = size.height / kH;
@@ -230,12 +202,6 @@ class FieldPainter extends CustomPainter {
     canvas.drawPath(path, Paint()..color = Colors.white.withValues(alpha: 0.3)..strokeWidth = 2.0..style = PaintingStyle.stroke);
     for (final v in vertices) {
       canvas.drawCircle(Offset(v.dx * sx, v.dy * sy), 5.0, Paint()..color = Colors.cyanAccent.withValues(alpha: 0.5));
-    }
-  }
-
-  void _drawDipoleRuleOverlay(Canvas canvas, Size size, DipoleRule rule) {
-    if (controller.rule is DipoleRule) {
-      _drawDipole(canvas, size, rule);
     }
   }
 
