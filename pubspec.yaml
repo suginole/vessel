@@ -1,5 +1,5 @@
 name: vessel
-description: "A new Flutter project."
+description: "Vessel: A dynamic field simulation and visualization app."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -21,9 +21,23 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/white-marble1.jpg
-    # - assets/audio/piano_loop.mp3
+    - assets/audio/piano_loop.mp3
+    - assets/icon/icon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+
+flutter_native_splash:
+  color: "#05050A"
+  android: true
+  ios: false
+  image: "assets/icon/icon.png"
