@@ -112,13 +112,25 @@ class ArcRule extends FieldRule {
     final ty = _touchPos!.dy.toInt().clamp(1, h - 2);
 
     int    curIdx = ty * w + tx;
-    Offset curDir = Offset(
-      (_rng.nextDouble() - 0.5),
-      (_rng.nextDouble() - 0.5),
-    );
-    // 正規化
-    final len = sqrt(curDir.dx*curDir.dx + curDir.dy*curDir.dy) + 1e-6;
-    curDir = Offset(curDir.dx/len, curDir.dy/len);
+    
+    // 初期方向：タッチ点周囲の電位勾配から決定
+    final dPhiX = _phi[curIdx + 1] - _phi[curIdx - 1];
+    final dPhiY = _phi[curIdx + w] - _phi[curIdx - w];
+    double gradX = dPhiX;
+    double gradY = dPhiY;
+    
+    // 勾配がゼロに近い場合はランダム、そうでなければ勾配方向（+わずかな揺らぎ）
+    if (gradX.abs() < 1e-6 && gradY.abs() < 1e-6) {
+      gradX = _rng.nextDouble() - 0.5;
+      gradY = _rng.nextDouble() - 0.5;
+    } else {
+      // 複数ボルトが重なりすぎないよう、わずかに揺らす
+      gradX += (_rng.nextDouble() - 0.5) * 0.2;
+      gradY += (_rng.nextDouble() - 0.5) * 0.2;
+    }
+    
+    final len = sqrt(gradX * gradX + gradY * gradY) + 1e-6;
+    Offset curDir = Offset(gradX / len, gradY / len);
 
     // 最大ステップ数（壁まで届かなければ打ち切り）
     const maxSteps = 512;
