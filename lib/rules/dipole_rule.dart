@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/material.dart' show Colors, Color;
 import '../game/grid.dart';
 import 'field_rule.dart';
+
+enum FieldView { potential, electricField, radiation }
 
 class ElectricDipole {
   Offset pos;
@@ -53,6 +56,9 @@ class DipoleRule extends FieldRule {
 
   @override
   String get name => "Dipole";
+
+  @override
+  RenderConfig get renderConfig => RenderConfig.electric();
 
   @override
   List<RuleParam> get params => [
@@ -173,21 +179,21 @@ class DipoleRule extends FieldRule {
     Offset normal = Offset.zero;
     
     if (x <= 1) { hit = true; normal += const Offset(1, 0); }
-    else if (x >= grid.width - 2) { hit = true; normal += const Offset(-1, 0); }
+    else if (x >= grid.w - 2) { hit = true; normal += const Offset(-1, 0); }
     if (y <= 1) { hit = true; normal += const Offset(0, 1); }
-    else if (y >= grid.height - 2) { hit = true; normal += const Offset(0, -1); }
+    else if (y >= grid.h - 2) { hit = true; normal += const Offset(0, -1); }
     
     // Polygon boundary check
-    if (!hit && x >= 0 && x < grid.width && y >= 0 && y < grid.height) {
-      if (grid.mask[y * grid.width + x] == 0) {
+    if (!hit && x >= 0 && x < grid.w && y >= 0 && y < grid.h) {
+      if (grid.mask[y * grid.w + x] == 0) {
         hit = true;
         // Estimate normal from mask gradient
         for (int i = -1; i <= 1; i++) {
           for (int j = -1; j <= 1; j++) {
             int nx = x + j;
             int ny = y + i;
-            if (nx >= 0 && nx < grid.width && ny >= 0 && ny < grid.height) {
-              if (grid.mask[ny * grid.width + nx] > 0) {
+            if (nx >= 0 && nx < grid.w && ny >= 0 && ny < grid.h) {
+              if (grid.mask[ny * grid.w + nx] > 0) {
                 normal += Offset(j.toDouble(), i.toDouble());
               }
             }
@@ -210,8 +216,8 @@ class DipoleRule extends FieldRule {
   }
 
   void _writeToGrid(Grid grid) {
-    for (int y = 0; y < grid.height; y++) {
-      for (int x = 0; x < grid.width; x++) {
+    for (int y = 0; y < grid.h; y++) {
+      for (int x = 0; x < grid.w; x++) {
         final pos = Offset(x.toDouble(), y.toDouble());
         double val = 0.0;
         
@@ -234,7 +240,7 @@ class DipoleRule extends FieldRule {
             val += k * (pAccel.dx * rVec.dy - pAccel.dy * rVec.dx) / (r * r);
           }
         }
-        grid.u[y * grid.width + x] = val;
+        grid.u[y * grid.w + x] = val;
       }
     }
   }
