@@ -2,3 +2,5 @@
 # Android signing
 android/key.properties
 *.jks
+build/
+.dart_tool/
