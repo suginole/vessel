@@ -11,7 +11,7 @@ import '../rules/arc_rule.dart';
 
 enum PanelMode { closed, standard, full }
 
-const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz', 'life', 'arc'];
+const _ruleOptions = ['wave', 'gravity', 'heat', 'gray-scott', 'bz', 'life', 'arc', 'electric'];
 
 class ControlPanel extends StatefulWidget {
   final GameController controller;
@@ -42,6 +42,7 @@ class _ControlPanelState extends State<ControlPanel> {
       case 'bz': return BZRule();
       case 'life': return LifeRule();
       case 'arc': return ArcRule();
+      case 'electric': return ElectricRule();
       default: return WaveRule();
     }
   }
@@ -68,6 +69,7 @@ class _ControlPanelState extends State<ControlPanel> {
     if (r is BZRule) return 'bz';
     if (r is LifeRule) return 'life';
     if (r is ArcRule) return 'arc';
+    if (r is ElectricRule) return 'electric';
     return 'wave';
   }
 

@@ -9,6 +9,7 @@ import '../rules/gray_scott_rule.dart';
 import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
 import '../rules/arc_rule.dart';
+import '../rules/electric_rule.dart';
 
 const int kW = 256;
 const int kH = 256;
@@ -33,6 +34,7 @@ class GameController {
     'bz': () => BZRule(),
     'life': () => LifeRule(),
     'arc': () => ArcRule(),
+    'electric': () => ElectricRule(),
   };
 
   void restart(int vertexCount, FieldRule newRule) {

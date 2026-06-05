@@ -6,7 +6,8 @@ import '../rules/heat_rule.dart';
 import '../rules/gray_scott_rule.dart';
 import '../rules/bz_rule.dart';
 import '../rules/life_rule.dart';
-import '../rules/arc_rule.dart';
+import 'arc_rule.dart';
+import 'electric_rule.dart';
 import 'game_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -97,6 +98,13 @@ class HomeScreen extends StatelessWidget {
                         icon: Icons.bolt,
                         color: const Color(0xFF7B61FF),
                         onTap: () => _launch(context, ArcRule()),
+                      ),
+                      _RuleCard(
+                        title: 'ELECTRIC',
+                        desc: 'Coulomb interactions',
+                        icon: Icons.electrical_services,
+                        color: const Color(0xFFFFAA00),
+                        onTap: () => _launch(context, ElectricRule()),
                       ),
                     ],
                   ),
