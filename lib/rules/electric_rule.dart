@@ -2,13 +2,11 @@ import 'dart:math';
 import 'dart:ui';
 import '../game/grid.dart';
 import 'field_rule.dart';
-import '../utils/geometry.dart';
-import '../game/game_controller.dart';
 
 class ElectricBody {
   Offset pos;
   Offset vel;
-  double charge; // 正負両方の値を持つ。0の場合は「モノポール」として振る舞う
+  double charge; // 正負両方の値を持つ
   bool isMonopole;
   
   ElectricBody({
@@ -19,17 +17,20 @@ class ElectricBody {
   });
 }
 
+class Photon {
+  Offset pos;
+  Offset vel;
+  Photon({required this.pos, required this.vel});
+}
+
 class ElectricRule extends FieldRule {
   @override
   String get name => 'electric';
 
   @override
   RenderConfig get renderConfig => RenderConfig(pixel: (u, m, ch) {
-    // 電位の可視化：正は赤、負は青
     final v = u;
     final absV = v.abs();
-    
-    // 対数スケールによる等高線
     final logV = log(1.0 + absV * 0.01);
     const levels = 8.0;
     final val = logV * levels;
@@ -69,19 +70,19 @@ class ElectricRule extends FieldRule {
 
   double kConstant = 0.001;
   double currentCharge = 1.0;
+  static const double lightSpeed = 120.0; // Photonの固定速度
 
   List<ElectricBody> bodies = [];
+  List<Photon> photons = [];
   List<Offset> trails = [];
   
   ElectricBody? placing;
   Offset? dragStart;
-  
-  // 境界情報を取得するために GameController への参照が必要（後で外部から注入）
-  List<Offset> boundaryVertices = [];
 
   @override
   void init(Grid grid) {
     bodies = [];
+    photons = [];
     trails = [];
     placing = null;
     dragStart = null;
@@ -103,6 +104,7 @@ class ElectricRule extends FieldRule {
 
     for (int s = 0; s < subSteps; s++) {
       _stepYoshida(dtSub, grid.mask, grid.w, grid.h);
+      _stepPhotons(dtSub, grid.mask, grid.w, grid.h);
     }
 
     if (bodies.isNotEmpty) {
@@ -111,6 +113,75 @@ class ElectricRule extends FieldRule {
     }
 
     _updatePotential(grid);
+  }
+
+  void _stepPhotons(double dt, List<double> mask, int w, int h) {
+    List<Photon> toRemove = [];
+    List<ElectricBody> newPairs = [];
+
+    for (var p in photons) {
+      final oldPos = p.pos;
+      p.pos += p.vel * dt;
+      
+      final ix = p.pos.dx.toInt();
+      final iy = p.pos.dy.toInt();
+      
+      // 境界反射
+      if (ix < 0 || ix >= w || iy < 0 || iy >= h || mask[iy * w + ix] == 0) {
+        _handlePhotonReflection(p, oldPos, mask, w, h);
+      }
+
+      // モノポールとの接触判定（対生成）
+      for (var b in bodies) {
+        if (b.isMonopole) {
+          if ((p.pos - b.pos).distance < 6.0) {
+            toRemove.add(p);
+            // 対生成：正負のペアを射出
+            final angle = Random().nextDouble() * 2 * pi;
+            const spawnSpeed = 15.0;
+            newPairs.add(ElectricBody(
+              pos: b.pos,
+              vel: Offset(cos(angle), sin(angle)) * spawnSpeed,
+              charge: 1.0,
+            ));
+            newPairs.add(ElectricBody(
+              pos: b.pos,
+              vel: Offset(cos(angle + pi), sin(angle + pi)) * spawnSpeed,
+              charge: -1.0,
+            ));
+            break;
+          }
+        }
+      }
+    }
+
+    photons.removeWhere((p) => toRemove.contains(p));
+    bodies.addAll(newPairs);
+    if (photons.length > 50) photons.removeRange(0, photons.length - 50);
+  }
+
+  void _handlePhotonReflection(Photon p, Offset oldPos, List<double> mask, int w, int h) {
+    double nx = 0, ny = 0;
+    final ix = oldPos.dx.toInt();
+    final iy = oldPos.dy.toInt();
+    for (int dy = -2; dy <= 2; dy++) {
+      for (int dx = -2; dx <= 2; dx++) {
+        final tx = ix + dx, ty = iy + dy;
+        if (tx < 0 || tx >= w || ty < 0 || ty >= h) continue;
+        if (mask[ty * w + tx] == 0) { nx -= dx; ny -= dy; }
+      }
+    }
+    double len = sqrt(nx * nx + ny * ny);
+    if (len > 0) {
+      nx /= len; ny /= len;
+      final dot = p.vel.dx * nx + p.vel.dy * ny;
+      if (dot > 0) {
+        p.vel = Offset(p.vel.dx - 2 * dot * nx, p.vel.dy - 2 * dot * ny);
+      }
+    } else {
+      p.vel = Offset(-p.vel.dx, -p.vel.dy);
+    }
+    p.pos = Offset(oldPos.dx.clamp(0.1, w - 1.1), oldPos.dy.clamp(0.1, h - 1.1));
   }
 
   void _stepYoshida(double dt, List<double> mask, int w, int h) {
@@ -131,20 +202,11 @@ class ElectricRule extends FieldRule {
     for (var b in bodies) {
       final oldPos = b.pos;
       b.pos += b.vel * dtC;
-      
-      final ix = b.pos.dx.toInt();
-      final iy = b.pos.dy.toInt();
-      
-      // 境界判定（グリッド端または多角形外）
+      final ix = b.pos.dx.toInt(), iy = b.pos.dy.toInt();
       if (ix < 0 || ix >= w || iy < 0 || iy >= h || mask[iy * w + ix] == 0) {
-        // 反射ロジック
         _handleReflection(b, oldPos, mask, w, h);
-        
-        // 速度制限：めり込み防止のため一定速度を超えたら減速
         const maxVel = 50.0;
-        if (b.vel.distance > maxVel) {
-          b.vel = (b.vel / b.vel.distance) * (maxVel * 0.8);
-        }
+        if (b.vel.distance > maxVel) b.vel = (b.vel / b.vel.distance) * (maxVel * 0.8);
       }
     }
 
@@ -160,12 +222,8 @@ class ElectricRule extends FieldRule {
         final distSq = r.dx * r.dx + r.dy * r.dy;
         const double epsSq = 25.0;
         final invDistCube = 1.0 / pow(distSq + epsSq, 1.5);
-        
-        // モノポールは他の電荷に力を及ぼさない（あるいは及ぼすとしても charge=1 として扱う）
-        // ここではモノポールも charge=1 として計算
-        final q1 = bodies[i].charge == 0 ? 1.0 : bodies[i].charge;
-        final q2 = bodies[j].charge == 0 ? 1.0 : bodies[j].charge;
-        
+        final q1 = bodies[i].isMonopole ? 1.0 : bodies[i].charge;
+        final q2 = bodies[j].isMonopole ? 1.0 : bodies[j].charge;
         acc -= r * (kConstant * q1 * q2 * 10000.0 * invDistCube);
       }
       bodies[i].vel += acc * dtD;
@@ -173,52 +231,33 @@ class ElectricRule extends FieldRule {
   }
 
   void _handleReflection(ElectricBody b, Offset oldPos, List<double> mask, int w, int h) {
-    // 境界の法線を近似計算
     double nx = 0, ny = 0;
-    final ix = oldPos.dx.toInt();
-    final iy = oldPos.dy.toInt();
-    
-    // 5x5の範囲でマスクの勾配を計算して法線を推定
+    final ix = oldPos.dx.toInt(), iy = oldPos.dy.toInt();
     for (int dy = -2; dy <= 2; dy++) {
       for (int dx = -2; dx <= 2; dx++) {
-        final tx = ix + dx;
-        final ty = iy + dy;
+        final tx = ix + dx, ty = iy + dy;
         if (tx < 0 || tx >= w || ty < 0 || ty >= h) continue;
-        if (mask[ty * w + tx] == 0) {
-          nx -= dx;
-          ny -= dy;
-        }
+        if (mask[ty * w + tx] == 0) { nx -= dx; ny -= dy; }
       }
     }
-    
     double len = sqrt(nx * nx + ny * ny);
     if (len > 0) {
-      nx /= len;
-      ny /= len;
-      
-      // 反射ベクトル: v' = v - 2(v·n)n
+      nx /= len; ny /= len;
       final dot = b.vel.dx * nx + b.vel.dy * ny;
-      if (dot > 0) { // 法線方向（外向き）に動いている場合のみ反射
-        b.vel = Offset(
-          b.vel.dx - 2 * dot * nx,
-          b.vel.dy - 2 * dot * ny
-        );
+      if (dot > 0) {
+        b.vel = Offset(b.vel.dx - 2 * dot * nx, b.vel.dy - 2 * dot * ny);
       }
     } else {
-      // 法線が取れない場合は単純反転
       b.vel = Offset(-b.vel.dx, -b.vel.dy);
     }
-    
-    // 境界内に強制的に押し戻す
-    b.pos = Offset(
-      oldPos.dx.clamp(0.1, w - 1.1),
-      oldPos.dy.clamp(0.1, h - 1.1)
-    );
+    b.pos = Offset(oldPos.dx.clamp(0.1, w - 1.1), oldPos.dy.clamp(0.1, h - 1.1));
   }
 
   void _handleInteractions() {
     if (bodies.length < 2) return;
     List<int> toRemove = [];
+    List<Photon> newPhotons = [];
+
     for (int i = 0; i < bodies.length; i++) {
       if (toRemove.contains(i)) continue;
       for (int j = i + 1; j < bodies.length; j++) {
@@ -227,10 +266,9 @@ class ElectricRule extends FieldRule {
         final interactionDist = (bodies[i].charge.abs() + bodies[j].charge.abs()) * 2.0 + 4.0;
         
         if (dist < interactionDist) {
-          // モノポールが関わる場合：即座に両方消滅
+          // モノポール接触：消滅のみ（Photon放出なし）
           if (bodies[i].isMonopole || bodies[j].isMonopole) {
-            toRemove.add(i);
-            toRemove.add(j);
+            toRemove.add(i); toRemove.add(j);
             break;
           }
 
@@ -238,10 +276,14 @@ class ElectricRule extends FieldRule {
           final q2 = bodies[j].charge;
           
           if ((q1 > 0 && q2 < 0) || (q1 < 0 && q2 > 0)) {
+            // 対消滅：Photon放出
             final totalCharge = q1 + q2;
             if (totalCharge.abs() < 0.5) {
-              toRemove.add(i);
-              toRemove.add(j);
+              final center = (bodies[i].pos + bodies[j].pos) / 2.0;
+              final angle = Random().nextDouble() * 2 * pi;
+              newPhotons.add(Photon(pos: center, vel: Offset(cos(angle), sin(angle)) * lightSpeed));
+              newPhotons.add(Photon(pos: center, vel: Offset(cos(angle + pi), sin(angle + pi)) * lightSpeed));
+              toRemove.add(i); toRemove.add(j);
               break;
             } else {
               bodies[i].charge = totalCharge;
@@ -258,6 +300,7 @@ class ElectricRule extends FieldRule {
     for (var idx in toRemove.toSet().toList()..sort((a, b) => b.compareTo(a))) {
       if (idx < bodies.length) bodies.removeAt(idx);
     }
+    photons.addAll(newPhotons);
   }
 
   void _updatePotential(Grid grid) {
@@ -267,14 +310,11 @@ class ElectricRule extends FieldRule {
     final h = grid.h;
     for (int i = 0; i < w * h; i++) {
       if (mask[i] == 0) { u[i] = 0; continue; }
-      final x = i % w;
-      final y = i ~/ w;
+      final x = i % w, y = i ~/ w;
       double phi = 0;
       for (var b in bodies) {
-        final dx = b.pos.dx - x;
-        final dy = b.pos.dy - y;
+        final dx = b.pos.dx - x, dy = b.pos.dy - y;
         const double epsSq = 25.0;
-        // モノポールは charge=1 としてポテンシャルに寄与
         final q = b.isMonopole ? 1.0 : b.charge;
         phi += (kConstant * q * 50000.0) / sqrt(dx * dx + dy * dy + epsSq);
       }
@@ -285,11 +325,9 @@ class ElectricRule extends FieldRule {
   @override
   void onTouchStart(Grid grid, Offset p) {
     dragStart = p;
-    // 電荷0が選択された場合、モノポールとして生成（内部電荷は1）
     final isZero = currentCharge == 0;
     placing = ElectricBody(
-      pos: p, 
-      vel: Offset.zero, 
+      pos: p, vel: Offset.zero, 
       charge: isZero ? 1.0 : currentCharge,
       isMonopole: isZero,
     );

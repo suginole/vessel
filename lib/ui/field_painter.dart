@@ -76,10 +76,17 @@ class FieldPainter extends CustomPainter {
     final sy = size.height / kH;
     final paint = Paint();
 
+    // 粒子の描画
     for (final b in rule.bodies) {
       final pos = Offset(b.pos.dx * sx, b.pos.dy * sy);
       final radius = (b.charge.abs() * 2.0 + 4.0).clamp(4.0, 20.0);
-      final color = b.charge > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF);
+      
+      Color color;
+      if (b.isMonopole) {
+        color = Colors.white; // モノポールは白
+      } else {
+        color = b.charge > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF);
+      }
       
       // Outer Glow
       canvas.drawCircle(pos, radius + 2, paint..color = color.withValues(alpha: 0.3));
@@ -87,6 +94,15 @@ class FieldPainter extends CustomPainter {
       canvas.drawCircle(pos, radius, paint..color = color);
       // Core
       canvas.drawCircle(pos, radius * 0.4, paint..color = Colors.white);
+    }
+
+    // 光子（Photon）の描画
+    final photonPaint = Paint()..color = Colors.white;
+    for (final p in rule.photons) {
+      final pos = Offset(p.pos.dx * sx, p.pos.dy * sy);
+      // 高速感を出すために進行方向に少し伸ばす、または単に小さな輝点として描画
+      canvas.drawCircle(pos, 2.0, photonPaint);
+      canvas.drawCircle(pos, 4.0, photonPaint.withValues(alpha: 0.3)); // グロー
     }
   }
 
