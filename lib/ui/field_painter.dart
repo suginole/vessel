@@ -98,11 +98,12 @@ class FieldPainter extends CustomPainter {
 
     // 光子（Photon）の描画
     final photonPaint = Paint()..color = Colors.white;
+    final photonGlowPaint = Paint()..color = Colors.white.withValues(alpha: 0.3);
     for (final p in rule.photons) {
       final pos = Offset(p.pos.dx * sx, p.pos.dy * sy);
       // 高速感を出すために進行方向に少し伸ばす、または単に小さな輝点として描画
       canvas.drawCircle(pos, 2.0, photonPaint);
-      canvas.drawCircle(pos, 4.0, photonPaint.withValues(alpha: 0.3)); // グロー
+      canvas.drawCircle(pos, 4.0, photonGlowPaint); // グロー
     }
   }
 

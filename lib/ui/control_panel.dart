@@ -76,9 +76,13 @@ class _ControlPanelState extends State<ControlPanel> {
 
   void _cycleMode() {
     setState(() {
-      if (_mode == PanelMode.closed) _mode = PanelMode.standard;
-      else if (_mode == PanelMode.standard) _mode = PanelMode.full;
-      else _mode = PanelMode.closed;
+      if (_mode == PanelMode.closed) {
+        _mode = PanelMode.standard;
+      } else if (_mode == PanelMode.standard) {
+        _mode = PanelMode.full;
+      } else {
+        _mode = PanelMode.closed;
+      }
     });
   }
 

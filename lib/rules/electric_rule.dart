@@ -91,8 +91,12 @@ class ElectricRule extends FieldRule {
 
   @override
   void setParam(String key, double value) {
-    if (key == 'K') kConstant = value;
-    if (key == 'charge') currentCharge = value.roundToDouble();
+    if (key == 'K') {
+      kConstant = value;
+    }
+    if (key == 'charge') {
+      currentCharge = value.roundToDouble();
+    }
   }
 
   @override
@@ -108,8 +112,12 @@ class ElectricRule extends FieldRule {
     }
 
     if (bodies.isNotEmpty) {
-      for (var b in bodies) trails.add(b.pos);
-      if (trails.length > 500) trails.removeRange(0, trails.length - 500);
+      for (var b in bodies) {
+        trails.add(b.pos);
+      }
+      if (trails.length > 500) {
+        trails.removeRange(0, trails.length - 500);
+      }
     }
 
     _updatePotential(grid);
@@ -157,7 +165,9 @@ class ElectricRule extends FieldRule {
 
     photons.removeWhere((p) => toRemove.contains(p));
     bodies.addAll(newPairs);
-    if (photons.length > 50) photons.removeRange(0, photons.length - 50);
+    if (photons.length > 50) {
+      photons.removeRange(0, photons.length - 50);
+    }
   }
 
   void _handlePhotonReflection(Photon p, Offset oldPos, List<double> mask, int w, int h) {
@@ -206,7 +216,9 @@ class ElectricRule extends FieldRule {
       if (ix < 0 || ix >= w || iy < 0 || iy >= h || mask[iy * w + ix] == 0) {
         _handleReflection(b, oldPos, mask, w, h);
         const maxVel = 50.0;
-        if (b.vel.distance > maxVel) b.vel = (b.vel / b.vel.distance) * (maxVel * 0.8);
+        if (b.vel.distance > maxVel) {
+          b.vel = (b.vel / b.vel.distance) * (maxVel * 0.8);
+        }
       }
     }
 
@@ -298,7 +310,9 @@ class ElectricRule extends FieldRule {
     }
     toRemove.sort((a, b) => b.compareTo(a));
     for (var idx in toRemove.toSet().toList()..sort((a, b) => b.compareTo(a))) {
-      if (idx < bodies.length) bodies.removeAt(idx);
+      if (idx < bodies.length) {
+        bodies.removeAt(idx);
+      }
     }
     photons.addAll(newPhotons);
   }
@@ -344,7 +358,9 @@ class ElectricRule extends FieldRule {
   void onTouchEnd(Grid grid, Offset p) {
     if (placing != null) {
       bodies.add(placing!);
-      if (bodies.length > 10) bodies.removeAt(0);
+      if (bodies.length > 10) {
+        bodies.removeAt(0);
+      }
       placing = null;
       dragStart = null;
     }

@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui';
 import '../game/grid.dart';
 import 'field_rule.dart';
@@ -32,7 +31,6 @@ class LifeRule extends FieldRule {
     grid.uPrev.fillRange(0, grid.uPrev.length, 0.0);
 
     // 頂点近傍にランダムパターンを配置 (核)
-    // ※ 頂点情報は Boundary にあるが、ここでは簡略化して全域に少し蒔く
     for (int i = 0; i < grid.u.length; i++) {
       if (grid.mask[i] > 0) {
         if (_rng.nextDouble() < density * 0.2) {
