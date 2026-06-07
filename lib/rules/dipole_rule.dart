@@ -58,7 +58,7 @@ class DipoleRule extends FieldRule {
   double initialAngularVel = 0.1;
   double damping = 0.98;
   double interactionStrength = 5.0; // 並進運動を強化
-  double lightSpeed = 0.5; // クーラン条件を考慮して落とす
+  double lightSpeed = 0.7; // クーラン条件(c*dt/dx <= 0.707)の限界近くまで上げる
   
   // Visualization mode: 0: Potential, 1: Electric Field, 2: Radiation
   int visualizationMode = 0;

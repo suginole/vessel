@@ -152,7 +152,7 @@ class RenderConfig {
   // ライフゲーム用
   static RenderConfig life() => RenderConfig(pixel: (u, m, ch) {
     if (u < 0.5) return 0;
-    return (255 * m).toInt();
+    return 255; // ぼかしマスク(m)を掛けず、クッキリ表示する
   });
 
   // アーク放電用（ビット感を抑える）
