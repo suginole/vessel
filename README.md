@@ -1,83 +1,78 @@
-# Vessel: 多様な物理シミュレーター
+# Vessel
 
-## 概要
+Vessel is an interactive, multi-physics simulation sandbox designed for mobile devices. It allows users to explore various physical and chemical phenomena within a dynamically adjustable polygonal boundary. The application combines real-time fluid dynamics, electromagnetism, and reaction-diffusion systems into a seamless, visually stunning experience.
 
-Vessel は、様々な物理現象をリアルタイムでシミュレーションし、視覚的に表現するインタラクティブなアプリケーションです。波の伝播から電気双極子の相互作用、さらには反応拡散パターンまで、多様なフィールドルールを通じて物理の世界を探索できます。
+## Features
 
-## 実装済みルール一覧
+### 1. Dynamic Polygonal Boundary
+The simulation takes place within a regular polygon whose number of vertices ($N$) can be adjusted in real-time from $N=3$ (Triangle) up to $N=16$ (Hexadecagon). This $N$ slider is conveniently located in the header for quick access. The boundary acts as a physical wall, reflecting waves, confining particles, and shaping the electric fields.
 
-### 古典物理
+### 2. Immersive 3-Step UI Toggle
+To maximize the visual experience, Vessel features a 3-step UI toggle system controlled by the bottom-right icon in the header:
+- **Step 0 (Header Only)**: Displays the top header with Rule selection, $N$ slider, and Restart button.
+- **Step 1 (Parameters Open)**: Expands the parameter tab below the header, revealing rule-specific sliders (e.g., Damping, Charge, Interaction Strength) for the currently active simulation rule.
+- **Step 2 (Minimal View)**: Hides all UI elements (header and parameter tab), leaving only the simulation canvas for complete immersion. A subtle transparent icon remains in the top-right corner to restore the UI.
 
-*   **WAVE (波の伝播と干渉)**
-    *   水面波の伝播、反射、干渉をシミュレートします。タッチ操作で波源を生成できます。
-*   **GRAVITY (軌道力学・多体問題)**
-    *   N個の質点間の重力相互作用をシミュレートします。質点を配置し、初期速度を与えることで複雑な軌道運動を観察できます。
-*   **ELECTRIC (クーロン力と対消滅)**
-    *   正負の電荷が生成する電場と、電荷間のクーロン力をシミュレートします。電荷を配置し、電位が0の境界が白く輝く美しい電場を観察できます。
-*   **DIPOLE (電気双極子と電磁場)**
-    *   電気双極子間の相互作用、トルク、並進運動をシミュレートします。双極子を射出し、互いに引き寄せ合って対消滅する様子や、その際に放出される電磁波パルスを観察できます。
-*   **HEAT (熱拡散とエントロピー)**
-    *   熱の拡散現象をシミュレートします。熱源を配置し、温度が時間とともに均一化していく過程を観察できます。
+### 3. Real-time Interaction
+Users can interact with the simulation by touching and dragging on the screen. Depending on the active rule, this action can generate waves, spawn particles, place electric charges, or shoot dipoles.
 
-### 化学・生物
+## Physics Rules
 
-*   **GRAY-SCOTT (反応拡散パターン)**
-    *   Gray-Scottモデルに基づき、反応拡散系が生成する複雑なパターン（斑点、迷路、移動する波など）をシミュレートします。
-*   **BZ REACTION (振動波パターン)**
-    *   ベロウソフ・ジャボチンスキー反応のような化学振動をシミュレートし、自己組織化する波紋や螺旋パターンを観察できます。
+Vessel currently implements the following simulation rules:
 
-### 離散系
+- **Wave**: A classic 2D wave equation solver. Touching the screen generates ripples that reflect off the polygonal boundaries.
+- **Gravity**: An N-body gravity simulation. Particles are attracted to each other and bounce off the walls. The gravitational constant ($G$) automatically scales with the polygon's size.
+- **Electric**: An electrostatic field simulation. Users can place positive or negative monopoles. The field potential is visualized with smooth contours, and the zero-potential boundary glows brilliantly in white.
+- **Dipole**: An advanced electromagnetic simulation. Users can shoot electric dipoles by dragging. Dipoles interact via torque and translational forces, align with each other, and can undergo **annihilation** upon contact, releasing a powerful electromagnetic pulse (radiation) that propagates across the grid.
+- **Heat**: A thermal diffusion simulation. Touching the screen injects heat, which slowly diffuses and dissipates over time.
+- **Gray-Scott**: A reaction-diffusion system that generates complex, organic-looking Turing patterns.
+- **BZ (Belousov-Zhabotinsky)**: An oscillating chemical reaction simulation that produces mesmerizing spiral waves.
+- **Life**: Conway's Game of Life adapted for a continuous grid, featuring crisp, unblurred cellular automata evolution.
+- **Arc**: A high-voltage electrical discharge simulation. It solves the Laplace equation to find the electric potential and traces stochastic, branching lightning bolts from the center to the grounded polygonal boundary.
 
-*   **LIFE (コンウェイのライフゲーム)**
-    *   ジョン・ホートン・コンウェイが考案したセル・オートマトン「ライフゲーム」をシミュレートします。初期パターンから生命のような振る舞いが創発される様子を観察できます。
-*   **ARC (絶縁破壊モデル)**
-    *   絶縁破壊モデルに基づき、電位勾配に沿って成長する放電経路をシミュレートします。複雑な分岐パターンや、壁への到達を観察できます。
+## Build Instructions
 
-## ビルド方法
+### Prerequisites
+- Flutter SDK (Channel stable, 3.24.0 or higher)
+- Android Studio / Xcode for mobile deployment
 
-このプロジェクトは Flutter で開発されています。以下の手順でビルドおよび実行が可能です。
+### Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/suginole/vessel.git
+   cd vessel
+   ```
+2. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
+3. Generate icons and splash screens (Required before first build):
+   ```bash
+   flutter pub run flutter_launcher_icons
+   flutter pub run flutter_native_splash:create
+   ```
 
-### 前提条件
+### Android Deployment
+The project is configured for Android deployment with `minSdkVersion 21` and `targetSdkVersion 34`.
+To build a release AppBundle:
+1. Ensure you have a valid keystore file (`.jks`).
+2. Create `android/key.properties` with your keystore details:
+   ```properties
+   storePassword=YOUR_PASSWORD
+   keyPassword=YOUR_PASSWORD
+   keyAlias=YOUR_ALIAS
+   storeFile=/path/to/your/keystore.jks
+   ```
+3. Build the AppBundle:
+   ```bash
+   flutter build appbundle --release
+   ```
 
-*   Flutter SDK がインストールされていること。
-*   Android Studio または VS Code と Flutter プラグインがインストールされていること。
+## Privacy Policy
 
-### ビルド手順
+**Vessel** is a standalone simulation application. 
+- We **do not** collect, store, or transmit any personal data.
+- The application does not require an internet connection to function.
+- No analytics, tracking, or advertising SDKs are included in this project.
 
-1.  **リポジトリのクローン**
-    ```bash
-    git clone https://github.com/suginole/vessel.git
-    cd vessel
-    ```
-
-2.  **依存関係の取得**
-    ```bash
-    flutter pub get
-    ```
-
-3.  **Android アプリケーションのビルド**
-    リリース版の `appbundle` を生成するには、`android/key.properties` に署名情報を設定し、`assets/icon/icon.png` を配置する必要があります。
-
-    ```bash
-    # アイコンとスプラッシュ画面の生成
-    flutter pub run flutter_launcher_icons
-    flutter pub run flutter_native_splash:create
-
-    # リリースビルド
-    flutter build appbundle --release
-    ```
-
-4.  **Web アプリケーションのビルド**
-    ```bash
-    flutter build web --release
-    ```
-
-5.  **開発モードでの実行**
-    ```bash
-    flutter run -d chrome   # Web版
-    flutter run             # 接続されているデバイスで実行
-    ```
-
-## プライバシーポリシー
-
-Vessel アプリケーションは、ユーザーの個人情報やデバイス情報を一切収集しません。すべてのシミュレーションはローカルで実行され、外部サーバーとの通信は行いません。安心してご利用いただけます。
+All simulations run entirely locally on your device's processor.
