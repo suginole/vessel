@@ -41,23 +41,10 @@ class _GameScreenState extends State<GameScreen>
     if (mounted) setState(() => _img = img);
   }
 
-  Offset _toGrid(Offset local) {
-    final isFull = _ctrl.grid.isFullscreen;
-    if (!isFull) {
-      return Offset(
-        local.dx / _canvasSize.width  * kW,
-        local.dy / _canvasSize.height * kH,
-      );
-    } else {
-      final side = math.min(_canvasSize.width, _canvasSize.height);
-      final dx = (_canvasSize.width - side) / 2;
-      final dy = (_canvasSize.height - side) / 2;
-      return Offset(
-        (local.dx - dx) / side * kW,
-        (local.dy - dy) / side * kH,
-      );
-    }
-  }
+  Offset _toGrid(Offset local) => Offset(
+    local.dx / _canvasSize.width  * kW,
+    local.dy / _canvasSize.height * kH,
+  );
 
   @override
   void dispose() {
@@ -83,32 +70,27 @@ class _GameScreenState extends State<GameScreen>
           
           // Content
           Positioned.fill(
-            child: LayoutBuilder(builder: (ctx, constraints) {
-              final isFull = _ctrl.grid.isFullscreen;
-              final side = constraints.maxWidth < constraints.maxHeight
-                  ? constraints.maxWidth
-                  : constraints.maxHeight;
-              
-              _canvasSize = isFull 
-                  ? Size(constraints.maxWidth, constraints.maxHeight)
-                  : Size(side, side);
+            child: Column(
+              children: [
+                SafeArea(
+                  bottom: false,
+                  child: ControlPanel(
+                    controller: _ctrl,
+                    onRebuild: () => setState(() {}),
+                    onBack: () => Navigator.of(context).pop(),
+                  ),
+                ),
+                Expanded(
+                  child: LayoutBuilder(builder: (ctx, constraints) {
+                    final side = constraints.maxWidth < constraints.maxHeight
+                        ? constraints.maxWidth
+                        : constraints.maxHeight;
+                    _canvasSize = Size(side, side);
 
-              return Column(
-                children: [
-                  if (!isFull)
-                    SafeArea(
-                      bottom: false,
-                      child: ControlPanel(
-                        controller: _ctrl,
-                        onRebuild: () => setState(() {}),
-                        onBack: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                  Expanded(
-                    child: Center(
+                    return Center(
                       child: SizedBox(
-                        width: _canvasSize.width,
-                        height: _canvasSize.height,
+                        width: side,
+                        height: side,
                         child: GestureDetector(
                           onPanStart:  (d) => _ctrl.onTouchStart(_toGrid(d.localPosition)),
                           onPanUpdate: (d) => _ctrl.onTouchMove(_toGrid(d.localPosition)),
@@ -118,29 +100,12 @@ class _GameScreenState extends State<GameScreen>
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              );
-            }),
-          ),
-          
-          // Floating Mode Toggle for Fullscreen
-          if (_ctrl.grid.isFullscreen)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 16,
-              child: FloatingActionButton.small(
-                backgroundColor: Colors.black54,
-                foregroundColor: Colors.white70,
-                onPressed: () {
-                  setState(() {
-                    _ctrl.grid.isFullscreen = false;
-                  });
-                },
-                child: const Icon(Icons.fullscreen_exit),
-              ),
+                    );
+                  }),
+                ),
+              ],
             ),
+          ),
           
           // Floating Home Button
           Positioned(

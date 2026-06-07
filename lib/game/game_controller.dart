@@ -43,14 +43,10 @@ class GameController {
     rule     = newRule;
     boundary = Boundary(vertexCount, cx: kW / 2, cy: kH / 2, r: kW * 0.38);
     grid     = Grid(kW, kH);
-    grid.polygonMask.setAll(0, boundary.buildMask(kW, kH));
+    grid.mask.setAll(0, boundary.buildMask(kW, kH));
     rule.init(grid);
     _dragVertex     = null;
     _lastImpulsePos = null;
-  }
-
-  void toggleFullscreen() {
-    grid.isFullscreen = !grid.isFullscreen;
   }
 
   void clean() {
@@ -65,7 +61,7 @@ class GameController {
 
   void update(double dt) {
     if (boundary.dirty) {
-      grid.polygonMask.setAll(0, boundary.buildMask(kW, kH));
+      grid.mask.setAll(0, boundary.buildMask(kW, kH));
     }
     rule.step(grid, dt);
   }

@@ -80,14 +80,11 @@ class _ControlPanelState extends State<ControlPanel> {
   void _cycleMode() {
     setState(() {
       if (_mode == PanelMode.closed) {
-        _mode = PanelMode.standard;
-        widget.controller.grid.isFullscreen = false;
+        _mode = PanelMode.standard; // ステップ1: パラメータタブ展開
       } else if (_mode == PanelMode.standard) {
-        _mode = PanelMode.full;
-        widget.controller.grid.isFullscreen = true;
+        _mode = PanelMode.full;     // ステップ2: ヘッダーもタブも非表示（全画面ビュー）
       } else {
-        _mode = PanelMode.closed;
-        widget.controller.grid.isFullscreen = false;
+        _mode = PanelMode.closed;   // ステップ0: ヘッダーのみ表示
       }
       widget.onRebuild();
     });
@@ -98,6 +95,8 @@ class _ControlPanelState extends State<ControlPanel> {
     final rule = widget.controller.rule;
     final params = rule.params;
     final ruleName = _currentRuleName();
+
+    if (_mode == PanelMode.full) return const SizedBox.shrink();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -110,7 +109,7 @@ class _ControlPanelState extends State<ControlPanel> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Header Row (Always Visible) ──
+          // ── Header Row ──
           Row(
             children: [
               if (widget.onBack != null) ...[
@@ -139,7 +138,7 @@ class _ControlPanelState extends State<ControlPanel> {
               _IconBtn(
                 icon: _mode == PanelMode.closed 
                     ? Icons.expand_more 
-                    : (_mode == PanelMode.standard ? Icons.expand_less : Icons.fullscreen_exit),
+                    : (_mode == PanelMode.standard ? Icons.expand_less : Icons.visibility_off),
                 onTap: _cycleMode,
                 color: const Color(0xFF00C8FF),
               ),

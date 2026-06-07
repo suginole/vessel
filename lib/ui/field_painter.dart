@@ -54,53 +54,28 @@ class FieldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final isFull = controller.grid.isFullscreen;
-    
-    // アスペクト比を維持するためのスケーリング係数
-    final side = math.min(size.width, size.height);
-    final sx = side / kW;
-    final sy = side / kH;
-    final dx = (size.width - side) / 2;
-    final dy = (size.height - side) / 2;
-
-    if (isFull) {
-      canvas.translate(dx, dy);
-    }
-
-    // 0. クリップパスの設定 (通常モードのみ)
-    if (!isFull) {
-      final clipPath = Path();
-      final vertices = controller.boundary.vertices;
-      if (vertices.isNotEmpty) {
-        clipPath.moveTo(vertices[0].dx * sx, vertices[0].dy * sy);
-        for (int i = 1; i < vertices.length; i++) {
-          clipPath.lineTo(vertices[i].dx * sx, vertices[i].dy * sy);
-        }
-        clipPath.close();
-        canvas.clipPath(clipPath);
+    // 0. クリップパスの設定
+    final sx = size.width / kW;
+    final sy = size.height / kH;
+    final clipPath = Path();
+    final vertices = controller.boundary.vertices;
+    if (vertices.isNotEmpty) {
+      clipPath.moveTo(vertices[0].dx * sx, vertices[0].dy * sy);
+      for (int i = 1; i < vertices.length; i++) {
+        clipPath.lineTo(vertices[i].dx * sx, vertices[i].dy * sy);
       }
+      clipPath.close();
+      canvas.clipPath(clipPath);
     }
 
-    // 1. グリッド背景の描画 (アスペクト比を維持して中央配置)
+    // 1. グリッド背景の描画
     if (gridImage != null) {
       final paint = Paint()
         ..imageFilter = ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2);
-      
-      final imgW = gridImage!.width.toDouble();
-      final imgH = gridImage!.height.toDouble();
-      
-      // 描画領域をアスペクト比1:1の正方形に制限
-      final side = math.min(size.width, size.height);
-      final destRect = Rect.fromCenter(
-        center: Offset(size.width / 2, size.height / 2),
-        width: side,
-        height: side,
-      );
-
       canvas.drawImageRect(
         gridImage!,
-        Rect.fromLTWH(0, 0, imgW, imgH),
-        destRect,
+        Rect.fromLTWH(0, 0, gridImage!.width.toDouble(), gridImage!.height.toDouble()),
+        Rect.fromLTWH(0, 0, size.width, size.height),
         paint,
       );
     }
@@ -116,10 +91,8 @@ class FieldPainter extends CustomPainter {
       _drawArc(canvas, size, controller.rule as ArcRule);
     }
 
-    // 3. 多角形境界の描画 (通常モードのみ)
-    if (!isFull) {
-      _drawBoundary(canvas, size, controller.boundary.vertices);
-    }
+    // 3. 多角形境界の描画
+    _drawBoundary(canvas, size, controller.boundary.vertices);
   }
 
   void _drawElectric(Canvas canvas, Size size, ElectricRule rule) {
