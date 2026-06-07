@@ -290,17 +290,36 @@ class ElectricRule extends FieldRule {
     final mask = grid.mask;
     final w = grid.w;
     final h = grid.h;
+
+    // 1. Calculate free-space potential as a base
     for (int i = 0; i < w * h; i++) {
-      if (mask[i] == 0) { u[i] = 0; continue; }
+      if (mask[i] == 0) {
+        u[i] = 0;
+        continue;
+      }
       final x = i % w, y = i ~/ w;
       double phi = 0;
       for (var b in bodies) {
         final dx = b.pos.dx - x, dy = b.pos.dy - y;
         const double epsSq = 25.0;
-        final q = b.charge;
-        phi += (kConstant * q * 50000.0) / sqrt(dx * dx + dy * dy + epsSq);
+        phi += (kConstant * b.charge * 50000.0) / sqrt(dx * dx + dy * dy + epsSq);
       }
       u[i] = phi;
+    }
+
+    // 2. Perform relaxation iterations to enforce conductor boundary (V=0)
+    // This bends the electric field lines to be perpendicular to the boundary,
+    // simulating the behavior of a grounded conductor surface.
+    for (int iter = 0; iter < 6; iter++) {
+      for (int y = 1; y < h - 1; y++) {
+        for (int x = 1; x < w - 1; x++) {
+          int i = y * w + x;
+          if (mask[i] == 0) continue;
+          
+          // Use a simple Gauss-Seidel relaxation
+          u[i] = (u[i - 1] + u[i + 1] + u[i - w] + u[i + w]) * 0.25;
+        }
+      }
     }
   }
 
