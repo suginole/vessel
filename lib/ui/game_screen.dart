@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../game/game_controller.dart';
@@ -40,10 +41,23 @@ class _GameScreenState extends State<GameScreen>
     if (mounted) setState(() => _img = img);
   }
 
-  Offset _toGrid(Offset local) => Offset(
-    local.dx / _canvasSize.width  * kW,
-    local.dy / _canvasSize.height * kH,
-  );
+  Offset _toGrid(Offset local) {
+    final isFull = _ctrl.grid.isFullscreen;
+    if (!isFull) {
+      return Offset(
+        local.dx / _canvasSize.width  * kW,
+        local.dy / _canvasSize.height * kH,
+      );
+    } else {
+      final side = math.min(_canvasSize.width, _canvasSize.height);
+      final dx = (_canvasSize.width - side) / 2;
+      final dy = (_canvasSize.height - side) / 2;
+      return Offset(
+        (local.dx - dx) / side * kW,
+        (local.dy - dy) / side * kH,
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -69,28 +83,29 @@ class _GameScreenState extends State<GameScreen>
           
           // Content
           Positioned.fill(
-            child: Column(
-              children: [
-                SafeArea(
-                  bottom: false,
-                  child: ControlPanel(
-                    controller: _ctrl,
-                    onRebuild: () => setState(() {}), // UIを再構築するが、画像をクリアしない
-                    onBack: () => Navigator.of(context).pop(),
-                  ),
-                ),
-                Expanded(
-                  child: LayoutBuilder(builder: (ctx, constraints) {
-                    final isFull = _ctrl.grid.isFullscreen;
-                    final side = constraints.maxWidth < constraints.maxHeight
-                        ? constraints.maxWidth
-                        : constraints.maxHeight;
-                    
-                    _canvasSize = isFull 
-                        ? Size(constraints.maxWidth, constraints.maxHeight)
-                        : Size(side, side);
+            child: LayoutBuilder(builder: (ctx, constraints) {
+              final isFull = _ctrl.grid.isFullscreen;
+              final side = constraints.maxWidth < constraints.maxHeight
+                  ? constraints.maxWidth
+                  : constraints.maxHeight;
+              
+              _canvasSize = isFull 
+                  ? Size(constraints.maxWidth, constraints.maxHeight)
+                  : Size(side, side);
 
-                    return Center(
+              return Column(
+                children: [
+                  if (!isFull)
+                    SafeArea(
+                      bottom: false,
+                      child: ControlPanel(
+                        controller: _ctrl,
+                        onRebuild: () => setState(() {}),
+                        onBack: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  Expanded(
+                    child: Center(
                       child: SizedBox(
                         width: _canvasSize.width,
                         height: _canvasSize.height,
@@ -103,12 +118,29 @@ class _GameScreenState extends State<GameScreen>
                           ),
                         ),
                       ),
-                    );
-                  }),
-                ),
-              ],
-            ),
+                    ),
+                  ),
+                ],
+              );
+            }),
           ),
+          
+          // Floating Mode Toggle for Fullscreen
+          if (_ctrl.grid.isFullscreen)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 16,
+              child: FloatingActionButton.small(
+                backgroundColor: Colors.black54,
+                foregroundColor: Colors.white70,
+                onPressed: () {
+                  setState(() {
+                    _ctrl.grid.isFullscreen = false;
+                  });
+                },
+                child: const Icon(Icons.fullscreen_exit),
+              ),
+            ),
           
           // Floating Home Button
           Positioned(

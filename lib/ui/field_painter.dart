@@ -55,8 +55,17 @@ class FieldPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final isFull = controller.grid.isFullscreen;
-    final sx = size.width / kW;
-    final sy = size.height / kH;
+    
+    // アスペクト比を維持するためのスケーリング係数
+    final side = math.min(size.width, size.height);
+    final sx = side / kW;
+    final sy = side / kH;
+    final dx = (size.width - side) / 2;
+    final dy = (size.height - side) / 2;
+
+    if (isFull) {
+      canvas.translate(dx, dy);
+    }
 
     // 0. クリップパスの設定 (通常モードのみ)
     if (!isFull) {
@@ -72,14 +81,26 @@ class FieldPainter extends CustomPainter {
       }
     }
 
-    // 1. グリッド背景の描画
+    // 1. グリッド背景の描画 (アスペクト比を維持して中央配置)
     if (gridImage != null) {
       final paint = Paint()
         ..imageFilter = ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2);
+      
+      final imgW = gridImage!.width.toDouble();
+      final imgH = gridImage!.height.toDouble();
+      
+      // 描画領域をアスペクト比1:1の正方形に制限
+      final side = math.min(size.width, size.height);
+      final destRect = Rect.fromCenter(
+        center: Offset(size.width / 2, size.height / 2),
+        width: side,
+        height: side,
+      );
+
       canvas.drawImageRect(
         gridImage!,
-        Rect.fromLTWH(0, 0, gridImage!.width.toDouble(), gridImage!.height.toDouble()),
-        Rect.fromLTWH(0, 0, size.width, size.height),
+        Rect.fromLTWH(0, 0, imgW, imgH),
+        destRect,
         paint,
       );
     }
