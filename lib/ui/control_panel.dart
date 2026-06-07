@@ -79,12 +79,13 @@ class _ControlPanelState extends State<ControlPanel> {
 
   void _cycleMode() {
     setState(() {
+      // 期待される順序: Header (closed) -> Params (standard) -> Minimal (full) -> Header (closed)
       if (_mode == PanelMode.closed) {
-        _mode = PanelMode.standard; // ステップ1: パラメータタブ展開
+        _mode = PanelMode.standard;
       } else if (_mode == PanelMode.standard) {
-        _mode = PanelMode.full;     // ステップ2: ヘッダーもタブも非表示（全画面ビュー）
+        _mode = PanelMode.full;
       } else {
-        _mode = PanelMode.closed;   // ステップ0: ヘッダーのみ表示
+        _mode = PanelMode.closed;
       }
       widget.onRebuild();
     });
@@ -96,7 +97,18 @@ class _ControlPanelState extends State<ControlPanel> {
     final params = rule.params;
     final ruleName = _currentRuleName();
 
-    if (_mode == PanelMode.full) return const SizedBox.shrink();
+    // In "Minimal" (full) mode, we only show the toggle button in a transparent row
+    if (_mode == PanelMode.full) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        alignment: Alignment.topRight,
+        child: _IconBtn(
+          icon: Icons.visibility_off,
+          onTap: _cycleMode,
+          color: Colors.white.withValues(alpha: 0.2), // Very subtle in minimal mode
+        ),
+      );
+    }
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
