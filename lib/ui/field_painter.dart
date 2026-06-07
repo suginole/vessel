@@ -70,8 +70,19 @@ class FieldPainter extends CustomPainter {
 
     // 1. グリッド背景の描画
     if (gridImage != null) {
-      final paint = Paint()
-        ..imageFilter = ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2);
+      final isLife = controller.rule.name == 'life';
+      final paint = Paint();
+      
+      if (isLife) {
+        // ライフゲームでは補間を無効化し、ピクセルをクッキリ表示する
+        paint.filterQuality = ui.FilterQuality.none;
+        paint.isAntiAlias = false;
+      } else {
+        // 他のルールではぼかしを入れて視覚効果を高める
+        paint.imageFilter = ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2);
+        paint.filterQuality = ui.FilterQuality.low;
+      }
+
       canvas.drawImageRect(
         gridImage!,
         Rect.fromLTWH(0, 0, gridImage!.width.toDouble(), gridImage!.height.toDouble()),

@@ -18,7 +18,39 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class Ripple {
+  final Offset position;
+  final DateTime startTime;
+  Ripple(this.position, this.startTime);
+}
+
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  final List<Ripple> _ripples = [];
+  late Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((_) {
+      final now = DateTime.now();
+      setState(() {
+        _ripples.removeWhere((r) => now.difference(r.startTime).inMilliseconds > 1000);
+      });
+    })..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  void _addRipple(Offset position) {
+    setState(() {
+      _ripples.add(Ripple(position, DateTime.now()));
+    });
+  }
+
   void _launch(BuildContext context, FieldRule rule) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (c) => GameScreen(initialRule: rule)),
@@ -31,19 +63,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF05050A),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.center,
-            radius: 1.5,
-            colors: [
-              Color(0xFF101020),
-              Color(0xFF05050A),
-            ],
+      body: GestureDetector(
+        onTapDown: (details) => _addRipple(details.localPosition),
+        behavior: HitTestBehavior.translucent,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.5,
+              colors: [
+                Color(0xFF101020),
+                Color(0xFF05050A),
+              ],
+            ),
           ),
-        ),
-        child: CustomScrollView(
-          slivers: [
+          child: Stack(
+            children: [
+              CustomPaint(
+                painter: RipplePainter(_ripples),
+                size: Size.infinite,
+              ),
+              CustomScrollView(
+                slivers: [
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
@@ -91,7 +132,10 @@ class _HomeScreenState extends State<HomeScreen> {
               _item(context, 'ARC', isJa ? '絶縁破壊モデル' : 'Dielectric breakdown model', const Color(0xFF7000FF), ArcRule(), Icons.electric_bolt_rounded),
             ]),
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -130,6 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _item(BuildContext context, String name, String desc, Color color, FieldRule rule, IconData icon) {
     return GestureDetector(
       onTap: () => _launch(context, rule),
+      behavior: HitTestBehavior.opaque,
       child: Container(
         width: 160,
         height: 120,
@@ -161,4 +206,31 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class RipplePainter extends CustomPainter {
+  final List<Ripple> ripples;
+  RipplePainter(this.ripples);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final now = DateTime.now();
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    for (final ripple in ripples) {
+      final elapsed = now.difference(ripple.startTime).inMilliseconds;
+      final t = (elapsed / 1000).clamp(0.0, 1.0);
+      
+      final radius = t * 150.0;
+      final opacity = 1.0 - t;
+      
+      paint.color = Colors.white.withValues(alpha: opacity * 0.3);
+      canvas.drawCircle(ripple.position, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant RipplePainter oldDelegate) => true;
 }
