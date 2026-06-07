@@ -81,15 +81,19 @@ class _GameScreenState extends State<GameScreen>
                 ),
                 Expanded(
                   child: LayoutBuilder(builder: (ctx, constraints) {
+                    final isFull = _ctrl.grid.isFullscreen;
                     final side = constraints.maxWidth < constraints.maxHeight
                         ? constraints.maxWidth
                         : constraints.maxHeight;
-                    _canvasSize = Size(side, side);
+                    
+                    _canvasSize = isFull 
+                        ? Size(constraints.maxWidth, constraints.maxHeight)
+                        : Size(side, side);
 
                     return Center(
                       child: SizedBox(
-                        width: side,
-                        height: side,
+                        width: _canvasSize.width,
+                        height: _canvasSize.height,
                         child: GestureDetector(
                           onPanStart:  (d) => _ctrl.onTouchStart(_toGrid(d.localPosition)),
                           onPanUpdate: (d) => _ctrl.onTouchMove(_toGrid(d.localPosition)),

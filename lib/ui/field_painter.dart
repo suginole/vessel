@@ -54,18 +54,22 @@ class FieldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 0. クリップパスの設定
+    final isFull = controller.grid.isFullscreen;
     final sx = size.width / kW;
     final sy = size.height / kH;
-    final clipPath = Path();
-    final vertices = controller.boundary.vertices;
-    if (vertices.isNotEmpty) {
-      clipPath.moveTo(vertices[0].dx * sx, vertices[0].dy * sy);
-      for (int i = 1; i < vertices.length; i++) {
-        clipPath.lineTo(vertices[i].dx * sx, vertices[i].dy * sy);
+
+    // 0. クリップパスの設定 (通常モードのみ)
+    if (!isFull) {
+      final clipPath = Path();
+      final vertices = controller.boundary.vertices;
+      if (vertices.isNotEmpty) {
+        clipPath.moveTo(vertices[0].dx * sx, vertices[0].dy * sy);
+        for (int i = 1; i < vertices.length; i++) {
+          clipPath.lineTo(vertices[i].dx * sx, vertices[i].dy * sy);
+        }
+        clipPath.close();
+        canvas.clipPath(clipPath);
       }
-      clipPath.close();
-      canvas.clipPath(clipPath);
     }
 
     // 1. グリッド背景の描画
@@ -91,8 +95,10 @@ class FieldPainter extends CustomPainter {
       _drawArc(canvas, size, controller.rule as ArcRule);
     }
 
-    // 3. 多角形境界の描画
-    _drawBoundary(canvas, size, controller.boundary.vertices);
+    // 3. 多角形境界の描画 (通常モードのみ)
+    if (!isFull) {
+      _drawBoundary(canvas, size, controller.boundary.vertices);
+    }
   }
 
   void _drawElectric(Canvas canvas, Size size, ElectricRule rule) {

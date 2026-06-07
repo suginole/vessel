@@ -135,8 +135,15 @@ class _ControlPanelState extends State<ControlPanel> {
               _IconBtn(
                 icon: _mode == PanelMode.closed 
                     ? Icons.expand_more 
-                    : (_mode == PanelMode.standard ? Icons.expand_less : Icons.fullscreen_exit),
-                onTap: _cycleMode,
+                    : (_mode == PanelMode.standard ? Icons.expand_less : (widget.controller.grid.isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen)),
+                onTap: () {
+                  if (_mode == PanelMode.full) {
+                    widget.controller.toggleFullscreen();
+                    widget.onRebuild();
+                  } else {
+                    _cycleMode();
+                  }
+                },
                 color: const Color(0xFF00C8FF),
               ),
             ],
