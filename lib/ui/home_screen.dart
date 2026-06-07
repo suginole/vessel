@@ -1,3 +1,4 @@
+import "package:flutter/scheduler.dart";
 import 'package:flutter/material.dart';
 import '../rules/field_rule.dart';
 import '../rules/wave_rule.dart';
