@@ -134,17 +134,38 @@ class _ControlPanelState extends State<ControlPanel> {
                 const SizedBox(width: 12),
               ],
               _label('RULE'),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
               _RuleDropdown(
                 value: ruleName,
                 options: _ruleOptions,
                 onChanged: (v) => _restart(v),
               ),
-              const Spacer(),
+              const SizedBox(width: 12),
+              _label('N'),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildSlider(
+                  value: _n.toDouble(),
+                  min: 3, max: 16,
+                  divisions: 13,
+                  onChanged: (v) {
+                    setState(() {
+                      _n = v.toInt();
+                      if (ruleName == 'gravity') {
+                        final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
+                        widget.controller.setParam('G', newG);
+                      }
+                    });
+                    _restart(); // Nの変更を即座に反映
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
               _IconBtn(
                 icon: Icons.restart_alt,
                 onTap: () => _restart(),
                 color: const Color(0xFFFF3D6B),
+                size: 32,
               ),
               const SizedBox(width: 8),
               _IconBtn(
@@ -153,37 +174,71 @@ class _ControlPanelState extends State<ControlPanel> {
                     : (_mode == PanelMode.standard ? Icons.expand_less : Icons.visibility_off),
                 onTap: _cycleMode,
                 color: const Color(0xFF00C8FF),
+                size: 32,
               ),
             ],
           ),
 
-          if (_mode != PanelMode.closed) ...[
-            const SizedBox(height: 8),
-            // ── N Slider (Standard & Full) ──
-            Row(
-              children: [
-                _label('N'),
-                const SizedBox(width: 6),
-                _nBadge(),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildSlider(
-                    value: _n.toDouble(),
-                    min: 3, max: 16,
-                    divisions: 13,
-                    onChanged: (v) {
-                      setState(() {
-                        _n = v.toInt();
-                        if (ruleName == 'gravity') {
-                          final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
-                          widget.controller.setParam('G', newG);
-                        }
-                      });
-                    },
-                  ),
+          if (_mode == PanelMode.standard && params.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            // ── Dynamic Params (Standard Only) ──
+            ...params.where((p) => !(ruleName == 'gravity' && p.key == 'G')).map((p) {
+              final isChargeParam = ruleName == 'electric' && p.key == 'charge';
+              final isDipoleView = ruleName == 'dipole' && p.key == 'view';
+              
+              final chargeValue = isChargeParam ? (p.getCurrentValue?.call() ?? p.defaultValue).toInt() : 0;
+              final chargeLabel = isChargeParam
+                  ? (chargeValue == 0 ? 'Monopole' : (chargeValue > 0 ? '+$chargeValue' : '$chargeValue'))
+                  : '';
+              
+              final viewValue = isDipoleView ? (p.getCurrentValue?.call() ?? p.defaultValue).toInt() : 0;
+              final viewLabel = isDipoleView ? FieldView.values[viewValue].name.toUpperCase() : '';
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(width: 80, child: _label(p.label.toUpperCase())),
+                        Expanded(
+                          child: _buildSlider(
+                            value: p.getCurrentValue?.call() ?? p.defaultValue,
+                            min: p.min, max: p.max,
+                            divisions: p.divisions,
+                            activeColor: const Color(0xFF80C8FF),
+                            onChanged: (v) {
+                              widget.controller.setParam(p.key, v);
+                              widget.onRebuild();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isChargeParam || isDipoleView) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            isChargeParam ? chargeLabel : viewLabel,
+                            style: TextStyle(
+                              color: isChargeParam 
+                                  ? (chargeValue == 0 ? Colors.white70 : (chargeValue > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF)))
+                                  : const Color(0xFF00FFB2),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
+              );
+            }).toList(),
           ],
 
           if (_mode == PanelMode.full && params.isNotEmpty) ...[
@@ -223,39 +278,23 @@ class _ControlPanelState extends State<ControlPanel> {
                         ),
                       ],
                     ),
-                    if (isChargeParam) ...[
-                      const SizedBox(height: 4),
+                    if (isChargeParam || isDipoleView) ...[
+                      const SizedBox(height: 2),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          _label('-5'),
-                          _label('0'),
-                          _label('+5'),
+                          Text(
+                            isChargeParam ? chargeLabel : viewLabel,
+                            style: TextStyle(
+                              color: isChargeParam 
+                                  ? (chargeValue == 0 ? Colors.white70 : (chargeValue > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF)))
+                                  : const Color(0xFF00FFB2),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        chargeLabel,
-                        style: TextStyle(
-                          color: chargeValue == 0
-                              ? Colors.white
-                              : (chargeValue > 0 ? const Color(0xFFFF3D6B) : const Color(0xFF00C8FF)),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                    if (isDipoleView) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        viewLabel,
-                        style: const TextStyle(
-                          color: Color(0xFF00FFB2),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
                       ),
                     ],
                   ],
