@@ -134,33 +134,13 @@ class _ControlPanelState extends State<ControlPanel> {
                 const SizedBox(width: 12),
               ],
               _label('RULE'),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               _RuleDropdown(
                 value: ruleName,
                 options: _ruleOptions,
                 onChanged: (v) => _restart(v),
               ),
-              const SizedBox(width: 12),
-              _label('N'),
-              const SizedBox(width: 4),
-              Expanded(
-                child: _buildSlider(
-                  value: _n.toDouble(),
-                  min: 3, max: 16,
-                  divisions: 13,
-                  onChanged: (v) {
-                    setState(() {
-                      _n = v.toInt();
-                      if (ruleName == 'gravity') {
-                        final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
-                        widget.controller.setParam('G', newG);
-                      }
-                    });
-                    _restart(); // Nの変更を即座に反映
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
+              const Spacer(),
               _IconBtn(
                 icon: Icons.restart_alt,
                 onTap: () => _restart(),
@@ -179,8 +159,34 @@ class _ControlPanelState extends State<ControlPanel> {
             ],
           ),
 
-          if (_mode == PanelMode.standard && params.isNotEmpty) ...[
+          if (_mode == PanelMode.standard) ...[
             const SizedBox(height: 12),
+            // ── N Slider (Always first in Params) ──
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(width: 80, child: _label('VERTICES (N)')),
+                  Expanded(
+                    child: _buildSlider(
+                      value: _n.toDouble(),
+                      min: 3, max: 16,
+                      divisions: 13,
+                      onChanged: (v) {
+                        setState(() {
+                          _n = v.toInt();
+                          if (ruleName == 'gravity') {
+                            final newG = 0.00002 + (0.01 - 0.00002) * (_n - 3) / (16 - 3);
+                            widget.controller.setParam('G', newG);
+                          }
+                        });
+                        _restart();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
             // ── Dynamic Params (Standard Only) ──
             ...params.where((p) => !(ruleName == 'gravity' && p.key == 'G')).map((p) {
               final isChargeParam = ruleName == 'electric' && p.key == 'charge';
