@@ -68,11 +68,23 @@ To build a release AppBundle:
    flutter build appbundle --release
    ```
 
-## Privacy Policy
+## プライバシーポリシー / Privacy Policy
 
-**Vessel** is a standalone simulation application. 
-- We **do not** collect, store, or transmit any personal data.
-- The application does not require an internet connection to function.
-- No analytics, tracking, or advertising SDKs are included in this project.
+Vessel アプリは個人情報を一切収集しません。
 
-All simulations run entirely locally on your device's processor.
+- 収集するデータ：なし
+- 第三者への提供：なし
+- 広告：なし
+- ネットワーク通信：なし
+
+This app does not collect any personal information.
+
+- Data collected: None
+- Third-party sharing: None
+- Advertising: None
+- Network communication: None
+
+お問い合わせ / Contact: pieuj3610.jin@gmail.com
+
+最終更新 / Last updated: 2025-06
+
